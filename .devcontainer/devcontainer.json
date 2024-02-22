@@ -1,6 +1,18 @@
 {
 	"name": "YAML Formatter",
 	"image": "mcr.microsoft.com/devcontainers/base:ubuntu",
+	"customizations": {
+		"vscode": {
+			"extensions": [
+				"justusadam.language-haskell",
+				"hookyqr.beautify",
+				"chaliy.haskell-language-server",
+				"hoovercj.haskell-linter",
+				"alanz.vscode-hie-server",
+				"ms-vscode.cpptools"
+			]
+		}
+	},
 	"features": {
 		"ghcr.io/devcontainers-contrib/features/haskell:2": {
 			"installHLS": true,
