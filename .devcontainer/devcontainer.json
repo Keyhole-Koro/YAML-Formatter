@@ -1,0 +1,15 @@
+{
+	"name": "YAML Formatter",
+	"image": "mcr.microsoft.com/devcontainers/base:ubuntu",
+	"features": {
+		"ghcr.io/devcontainers-contrib/features/haskell:2": {
+			"installHLS": true,
+			"installStack": true,
+			"installStackGHCupHook": true,
+			"adjustBash": true,
+			"ghcVersion": "recommended",
+			"cabalVersion": "recommended",
+			"globalPackages": "hlint"
+		}
+	}
+}
