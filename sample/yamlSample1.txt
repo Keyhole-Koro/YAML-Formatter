@@ -1,0 +1,12 @@
+# Example of YAML syntax errors
+name: "John Doe"
+age 30  # Missing colon after "age"
+city: New York
+favorite_colors:
+  - Red
+  - Green
+  - Blue
+address:
+  street: "123 Main Street"
+  city: "Missing colon"  # Missing colon after "city"
+  zipcode: 10001
