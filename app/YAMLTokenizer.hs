@@ -3,6 +3,8 @@ module YAMLTokenizer where
 import System.IO
 import Data.Char (isSpace)
 
+import Utils
+
 import qualified Data.TokenEnum as Token
 
 tokenize :: Handle -> IO [Token.Token]
@@ -17,8 +19,10 @@ tokenize handle = do
                 '\n' -> (Token.NewLine :) <$> tokenize handle
                 ' ' -> (Token.Space :) <$> tokenize handle
                 '#' -> do
-                    readWhile (/= '\n') handle
-                    tokenize handle
+                    str <- readWhile (/= '\n') handle
+                    let tokenList = [Token.Sharp, Token.Scalar str]
+                    restTokens <- tokenize handle
+                    return (tokenList ++ restTokens)
                 '"' -> do
                     str <- readUntilQuote handle
                     (Token.Scalar str :) <$> tokenize handle
@@ -42,17 +46,3 @@ readUntilQuote handle = do
             if nextChar == '"'
                 then return str
                 else (str ++) <$> readUntilQuote handle
-
-
-readWhile :: (Char -> Bool) -> Handle -> IO String
-readWhile p handle = do
-    char <- hLookAhead handle
-    if p char
-        then do
-            _ <- hGetChar handle
-            rest <- readWhile p handle
-            return (char : rest)
-        else return []
-        
-isScalarChar :: Char -> Bool
-isScalarChar c = not (isSpace c || c `elem` [':', '-', '"', '\n', '\r', '\t'])
