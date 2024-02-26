@@ -49,7 +49,7 @@ readWhile p handle = do
             _ <- hGetChar handle
             rest <- readWhile p handle
             return (char : rest)
-        else return [char]
+        else return []
         
 isScalarChar :: Char -> Bool
 isScalarChar c = not (isSpace c || c `elem` [':', '-', '"', '\n', '\r', '\t'])
