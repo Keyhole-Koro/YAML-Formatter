@@ -8,5 +8,5 @@ main = do
     handle <- openFile filePath ReadMode
     tokens <- tokenize handle
     print tokens
-
+    
     hClose handle

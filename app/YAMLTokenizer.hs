@@ -14,9 +14,11 @@ tokenize handle = do
             case char of
                 ':' -> (Token.Colon :) <$> tokenize handle
                 '-' -> (Token.Dash :) <$> tokenize handle
-                '#' -> (Token.Sharp :) <$> tokenize handle
                 '\n' -> (Token.NewLine :) <$> tokenize handle
                 ' ' -> (Token.Space :) <$> tokenize handle
+                '#' -> do
+                    readWhile (/= '\n') handle
+                    tokenize handle
                 '"' -> do
                     str <- readUntilQuote handle
                     (Token.Scalar str :) <$> tokenize handle
