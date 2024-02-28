@@ -5,7 +5,7 @@ import Data.Char (isSpace)
 
 import Utils
 
-import qualified Data.TokenEnum as Token
+import qualified Data.Token as Token
 
 tokenize :: Handle -> IO [Token.Token]
 tokenize handle = do
