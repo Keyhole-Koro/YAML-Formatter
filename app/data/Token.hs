@@ -1,2 +1,2 @@
 module Data.Token where
-data Token = Scalar String | MappingStart | MappingEnd | SequenceStart | SequenceEnd | Colon | Dash | NewLine | Space | Sharp | EOF deriving (Show, Eq)
+data Token = Scalar String | Str String | Key String | Value String | MappingStart | MappingEnd | SequenceStart | SequenceEnd | Colon | Dash | NewLine | Space | Sharp | EOF deriving (Show, Eq)
