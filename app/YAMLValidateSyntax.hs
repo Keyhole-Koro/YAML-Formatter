@@ -44,80 +44,26 @@ validateSpaceRecursive (tkn:rest) tknIndex reserveTkn errors =
             let newError = [ErrorKind.ExcessSpaces tknIndex "Excessive number of spaces" undefined]
             in validateSpaceRecursive rest (tknIndex + 1) reserveTkn (errors ++ newError)
 
+validateYAMLSyntaxOrder' :: [Token.Token] -> [Error] -> IO (Error)
+validateYAMLSyntaxOrder' [] [] = return Nothing
 
-identifyScalar :: [Token.Token] -> IO [Token.Token]
-identifyScalar [] = return []
-identifyScalar (tkn:rest) =
-    case tkn of
-        Token.Scalar str ->
-            case rest of
-                (Token.Colon:xs) -> do
-                    nextTokens <- identifyScalar xs
-                    return (Token.Key str: Token.Colon: nextTokens)
-                _ -> do
-                    nextTokens <- identifyScalar rest
-                    return (tkn : nextTokens)
-        Token.Dash ->
-            case rest of
-                (Token.Space n: Token.Scalar str:xs) -> do
-                    nextTokens <- identifyScalar xs
-                    return (Token.Dash: Token.Space n: Token.Item str: nextTokens)
-                _ -> do
-                    nextTokens <- identifyScalar rest
-                    return (tkn : nextTokens)
-        Token.Sharp ->
-            case rest of
-                (Token.Space n: Token.Scalar )
+validateYAMLSyntaxOrder' (Token.Sharp : x : Token.NewLine : rest) errs = do
+    case x of
+        Token.Space -> validateYAMLSyntaxOrder' rest errs
+        _ -> validateYAMLSyntaxOrder' rest (errs ++ []) -- space error
 
-        _ -> do
-            nextTokens <- identifyScalar rest
-            return (tkn : nextTokens)
+validateYAMLSyntaxOrder' tokens errs = do
+    case tokens of
+        (Token.Space _ : rest) -> validateWithSpace rest
+        _ -> validateWithoutSpace tokens
 
+    where
+        validateWithSpace (Token.Scalar _ : x : Token.NewLine : rest) = do
+            
 
-validateYAMLSyntaxOrder' :: [Token.Token] -> IO (Maybe Int)
-validateYAMLSyntaxOrder' [] = return Nothing
-validateYAMLSyntaxOrder' (Token.Sharp:Token.Scalar msg:Token.NewLine:xs) = do
-    putStrLn $ "Warning: Sharp followed by Scalar \"" ++ msg ++ "\""
-    validateYAMLSyntaxOrder' xs
-validateYAMLSyntaxOrder' (Token.Sharp:xs) = return $ Just 0 -- Error: Token.Sharp without Token.Scalar
-validateYAMLSyntaxOrder' (Token.Scalar _:Token.Colon:Token.Space:xs) = validateYAMLSyntaxOrder' xs
-validateYAMLSyntaxOrder' (Token.Scalar _:Token.Space:Token.Scalar _:Token.Space:Token.Sharp:Token.Scalar msg:Token.NewLine:xs) = do
-    putStrLn $ "Syntax error: " ++ msg
-    validateYAMLSyntaxOrder' xs
-validateYAMLSyntaxOrder' (Token.Scalar _:Token.Space:Token.Scalar _:Token.NewLine:xs) = do
-    putStrLn "Error: Missing Colon after key"
-    validateYAMLSyntaxOrder' xs
-validateYAMLSyntaxOrder' (Token.Scalar _:Token.Colon:Token.NewLine:Token.Space:Token.Space:Token.Dash:Token.Space:_:xs) = validateYAMLSyntaxOrder' xs
-validateYAMLSyntaxOrder' (Token.Scalar _:Token.Colon:Token.NewLine:Token.Space:Token.Space:Token.Dash:Token.Space:Token.Scalar _:xs) = validateYAMLSyntaxOrder' xs
-validateYAMLSyntaxOrder' (Token.Scalar _:Token.Colon:Token.NewLine:Token.Space:Token.Space:Token.Dash:xs) = return $ Just 0 -- Error: Token.Scalar missing after Token.Dash
-validateYAMLSyntaxOrder' (Token.Scalar _:Token.Colon:Token.NewLine:Token.Space:Token.Space:_:xs) = do
-    putStrLn "Error: Unexpected token after Dash"
-    validateYAMLSyntaxOrder' xs
-validateYAMLSyntaxOrder' (Token.Scalar _:Token.Colon:Token.NewLine:Token.Space:Token.Space:Token.Space:Token.Scalar _:Token.Colon:Token.Space:_:xs) = validateYAMLSyntaxOrder' xs
-validateYAMLSyntaxOrder' (Token.Scalar _:Token.Colon:Token.NewLine:Token.Space:Token.Space:Token.Space:Token.Scalar _:Token.Colon:Token.Space:Token.Space:Token.Sharp:Token.Scalar msg:Token.NewLine:xs) = do
-    putStrLn $ "Syntax error: " ++ msg
-    validateYAMLSyntaxOrder' xs
-validateYAMLSyntaxOrder' (Token.Scalar _:Token.Colon:Token.NewLine:Token.Space:Token.Space:Token.Space:Token.Scalar _:Token.Colon:Token.Space:Token.Space:xs) = do
-    putStrLn "Error: Missing Colon after key"
-    validateYAMLSyntaxOrder' xs
-validateYAMLSyntaxOrder' (Token.Scalar _:Token.Colon:Token.NewLine:Token.Space:Token.Space:Token.Space:Token.Scalar _:Token.Colon:Token.Space:xs) = do
-    putStrLn "Error: Missing value after Colon"
-    validateYAMLSyntaxOrder' xs
-validateYAMLSyntaxOrder' (Token.Scalar _:Token.Colon:Token.NewLine:Token.Space:Token.Space:Token.Space:Token.Scalar _:xs) = do
-    putStrLn "Error: Missing Colon after key"
-    validateYAMLSyntaxOrder' xs
-validateYAMLSyntaxOrder' (Token.Scalar _:Token.Colon:Token.NewLine:Token.Space:Token.Space:xs) = do
-    putStrLn "Error: Missing value after Colon"
-    validateYAMLSyntaxOrder' xs
-validateYAMLSyntaxOrder' (Token.Scalar _:Token.Colon:Token.NewLine:xs) = return $ Just 0 -- Error: Token.Scalar missing after Token.Colon
-validateYAMLSyntaxOrder' (Token.Scalar _:Token.NewLine:xs) = do
-    putStrLn "Error: Missing Colon after key"
-    validateYAMLSyntaxOrder' xs
-validateYAMLSyntaxOrder' (Token.Colon:Token.Space:Token.Scalar _:xs) = validateYAMLSyntaxOrder' xs
-validateYAMLSyntaxOrder' (Token.Colon:xs) = return $ Just 0 -- Error: Token.Colon without key
-validateYAMLSyntaxOrder' (Token.Space:xs) = validateYAMLSyntaxOrder' xs
-validateYAMLSyntaxOrder' (Token.Dash:Token.Space:Token.Scalar _:xs) = validateYAMLSyntaxOrder' xs
-validateYAMLSyntaxOrder' (Token.Dash:xs) = return $ Just 0 -- Error: Token.Dash without Token.Scalar
-validateYAMLSyntaxOrder' (Token.NewLine:xs) = validateYAMLSyntaxOrder' xs
-validateYAMLSyntaxOrder' (Token.EOF:_) = return Nothing
-validateYAMLSyntaxOrder' _ = return $ Just 0 -- Error: Unexpected token
+        validateWithoutSpace (Token.Scalar _ : x : Token.NewLine : rest) = do
+            
+
+        validateWithSpace _ = return ()  -- Handle other cases or errors if needed
+        validateWithoutSpace _ = return ()  -- Handle other cases or errors if needed
+    

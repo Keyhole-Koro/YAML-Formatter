@@ -5,7 +5,7 @@ import YAMLTokenizer
 
 main :: IO ()
 main = do
-    let filePath = "sample/yamlSample3.txt"
+    let filePath = "sample/yamlSample1.txt"
     handle <- openFile filePath ReadMode
     tokens <- tokenize handle
     print tokens
