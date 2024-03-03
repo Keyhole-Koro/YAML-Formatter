@@ -1,6 +1,6 @@
-# Example of YAML syntax errors
+# Corrected YAML with nested list
 name: "John Doe"
-age 30  # Missing colon after "age"
+age: 30  # Added colon after "age"
 city: New York
 favorite_colors:
   - Red
@@ -8,5 +8,9 @@ favorite_colors:
   - Blue
 address:
   street: "123 Main Street"
-  city: "Missing colon"  # Missing colon after "city"
+  city: "Missing colon"  # Added colon after "city"
   zipcode: 10001
+nested_list:
+  - item1
+  - item2
+  - item3

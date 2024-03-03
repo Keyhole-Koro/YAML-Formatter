@@ -7,7 +7,11 @@ import Utils
 
 import qualified Data.Token as Token
 
-tokenize :: Handle -> IO [Token.Token]
+spacesCount :: Handle -> IO Int
+spacesCount handle = do
+    spaces <- readWhile (== ' ') handle  -- Read consecutive spaces
+    return (1 + length spaces)
+
 tokenize handle = do
     isEOF <- hIsEOF handle
     if not isEOF
@@ -17,7 +21,9 @@ tokenize handle = do
                 ':' -> (Token.Colon :) <$> tokenize handle
                 '-' -> (Token.Dash :) <$> tokenize handle
                 '\n' -> (Token.NewLine :) <$> tokenize handle
-                ' ' -> (Token.Space :) <$> tokenize handle
+                ' ' -> do
+                    numSpaces <- spacesCount handle
+                    (Token.Space numSpaces :) <$> tokenize handle
                 '#' -> do
                     str <- readWhile (/= '\n') handle
                     let tokenList = [Token.Sharp, Token.Scalar str]
@@ -25,7 +31,7 @@ tokenize handle = do
                     return (tokenList ++ restTokens)
                 '"' -> do
                     str <- readUntilQuote handle
-                    (Token.Scalar str :) <$> tokenize handle
+                    (Token.QuotedScalar str :) <$> tokenize handle
                 _ -> do
                     let str = [char]
                     rest <- readWhile isScalarChar handle

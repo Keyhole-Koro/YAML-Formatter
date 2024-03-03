@@ -1,0 +1,15 @@
+- item1:
+    - name: subitem11
+      value: 100
+    - name: subitem12
+      value: 200
+- item2:
+    - name: subitem21
+      value: 300
+    - name: subitem22
+      value: 400
+- item3:
+    - name: subitem31
+      value: 500
+    - name: subitem32
+      value: 600

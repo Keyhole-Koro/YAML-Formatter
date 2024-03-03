@@ -13,9 +13,9 @@ validateYAMLSyntax tokens = do
         Just errorPos -> putStrLn $ "Syntax error at position " ++ show errorPos
         Nothing -> putStrLn "YAML syntax is correct"
 
-processNewlineSpaces :: Token -> Int -> Int -> [Token] -> [Error] -> (Int, [Error])
-processNewlineSpaces tkn tknIndex reserveTkn errors =
-    let spcTkn = readWhile (== Token.Space) tkn
+processNewlineSpaces :: [Token] -> Int -> Int -> [Token] -> [Error] -> (Int, [Error])
+processNewlineSpaces tokens@(tkn:rest) tknIndex reserveTkn errors =
+    let spcTkn = readWhile (== Token.Space) tokens
         spacesCount = length spcTkn
         errorMsg
             | spacesCount > 2 = "Excessive number of spaces"
@@ -34,12 +34,44 @@ validateSpaceRecursive [] _ _ errors = errors
 validateSpaceRecursive (tkn:rest) tknIndex reserveTkn errors =
     case tkn of
         Token.NewLine ->
-            let (spacesCount, newError) = processNewlineSpaces tkn tknIndex reserveTkn errors
+            let (spacesCount, newError) = processNewlineSpaces rest tknIndex reserveTkn errors
             in validateSpaceRecursive (drop spacesCount rest) (tknIndex + spacesCount) reserveTkn newError
         Token.Space -> 
-        _ -> validateSpaceRecursive rest (tknIndex + 1) reserveTkn errors
+            case head reserveTkn of
+                Token.value ->
+                    let () = 
+        _ -> 
+            let newError = [ErrorKind.ExcessSpaces tknIndex "Excessive number of spaces" undefined]
+            in validateSpaceRecursive rest (tknIndex + 1) reserveTkn (errors ++ newError)
 
 
+identifyScalar :: [Token.Token] -> IO [Token.Token]
+identifyScalar [] = return []
+identifyScalar (tkn:rest) =
+    case tkn of
+        Token.Scalar str ->
+            case rest of
+                (Token.Colon:xs) -> do
+                    nextTokens <- identifyScalar xs
+                    return (Token.Key str: Token.Colon: nextTokens)
+                _ -> do
+                    nextTokens <- identifyScalar rest
+                    return (tkn : nextTokens)
+        Token.Dash ->
+            case rest of
+                (Token.Space n: Token.Scalar str:xs) -> do
+                    nextTokens <- identifyScalar xs
+                    return (Token.Dash: Token.Space n: Token.Item str: nextTokens)
+                _ -> do
+                    nextTokens <- identifyScalar rest
+                    return (tkn : nextTokens)
+        Token.Sharp ->
+            case rest of
+                (Token.Space n: Token.Scalar )
+
+        _ -> do
+            nextTokens <- identifyScalar rest
+            return (tkn : nextTokens)
 
 
 validateYAMLSyntaxOrder' :: [Token.Token] -> IO (Maybe Int)
