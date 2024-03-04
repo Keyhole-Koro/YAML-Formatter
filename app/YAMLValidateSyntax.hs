@@ -13,57 +13,44 @@ validateYAMLSyntax tokens = do
         Just errorPos -> putStrLn $ "Syntax error at position " ++ show errorPos
         Nothing -> putStrLn "YAML syntax is correct"
 
-processNewlineSpaces :: [Token] -> Int -> Int -> [Token] -> [Error] -> (Int, [Error])
-processNewlineSpaces tokens@(tkn:rest) tknIndex reserveTkn errors =
-    let spcTkn = readWhile (== Token.Space) tokens
-        spacesCount = length spcTkn
-        errorMsg
-            | spacesCount > 2 = "Excessive number of spaces"
-            | spacesCount < 2 = "Insufficient number of spaces"
+spaceError :: Rank -> Int -> Int -> Int -> Error
+spaceError rnk tknIndex spcs expectedSpcs errors =
+    let errorMsg
+            | spcs > expectedSpcs = "Excessive number of spaces"
+            | spcs < expectedSpcs = "Insufficient number of spaces"
             | otherwise = "Correct number of spaces"
         newError = if errorMsg /= "Correct number of spaces"
-                      then ([ErrorKind.IndentSpaces
-                            tknIndex errorMsg
-                            ("There is(are) " ++ show spacesCount ++ " space(s)") |
+                      then ([ErrorKind.Space
+                            rnk
+                            tknIndex
+                            errorMsg
+                            ("There is(are) " ++ show expectedSpcs ++ " space(s)") |
                             errorMsg /= "Correct number of spaces"])
                       else []
-    in (spacesCount, errors ++ newError)
+    in newError
 
-validateSpaceRecursive :: [Token.Token] -> Int -> [Token.Token] -> [Error] -> [Error]
-validateSpaceRecursive [] _ _ errors = errors
-validateSpaceRecursive (tkn:rest) tknIndex reserveTkn errors =
-    case tkn of
-        Token.NewLine ->
-            let (spacesCount, newError) = processNewlineSpaces rest tknIndex reserveTkn errors
-            in validateSpaceRecursive (drop spacesCount rest) (tknIndex + spacesCount) reserveTkn newError
-        Token.Space -> 
-            case head reserveTkn of
-                Token.value ->
-                    let () = 
-        _ -> 
-            let newError = [ErrorKind.ExcessSpaces tknIndex "Excessive number of spaces" undefined]
-            in validateSpaceRecursive rest (tknIndex + 1) reserveTkn (errors ++ newError)
+excessError :: Int -> [Token] -> Error
+excessError tknIndex excess =
+    case excess of
+        (Token.Space n : Token.Comment : _) -> spaceError Rank.Recomment tknIndex n 1
+        (Token.Comment : _) -> spaceError Rank.Recomment tknIndex 0 1
+        [] -> []
+        _ -> [ErrorKind.Syntax Rank.Fatal tknIndex "There may be excess tokens" " "]
 
-validateYAMLSyntaxOrder' :: [Token.Token] -> [Error] -> IO (Error)
-validateYAMLSyntaxOrder' [] [] = return Nothing
 
-validateYAMLSyntaxOrder' (Token.Sharp : x : Token.NewLine : rest) errs = do
+validateYAMLSyntaxOrder' :: [Token.Token] -> Int -> Int -> [Error] -> IO (Error)
+validateYAMLSyntaxOrder' _ _ _ errs = return $ Just $ Error.CustomError "Unhandled pattern in validation"
+
+-- process comment
+validateYAMLSyntaxOrder' (Token.Sharp : x : Token.NewLine : rest) tknIndex dpth errs = do
     case x of
-        Token.Space -> validateYAMLSyntaxOrder' rest errs
-        _ -> validateYAMLSyntaxOrder' rest (errs ++ []) -- space error
+        Token.Space n -> validateYAMLSyntaxOrder' rest dpth errs
+        _ -> validateYAMLSyntaxOrder' rest dpth (errs ++ (spaceError Rank.Recomment tknIndex n dpth*2))
 
-validateYAMLSyntaxOrder' tokens errs = do
-    case tokens of
-        (Token.Space _ : rest) -> validateWithSpace rest
-        _ -> validateWithoutSpace tokens
-
-    where
-        validateWithSpace (Token.Scalar _ : x : Token.NewLine : rest) = do
-            
-
-        validateWithoutSpace (Token.Scalar _ : x : Token.NewLine : rest) = do
-            
-
-        validateWithSpace _ = return ()  -- Handle other cases or errors if needed
-        validateWithoutSpace _ = return ()  -- Handle other cases or errors if needed
+-- process initial key value
+validateYAMLSyntaxOrder' (Token.Scalar key : Token.Colon : Token.Space n : Token.QuotedScalar val : excess : Token.NewLine : rest) tknIndex dpth errs = do
+    let newErrors = []
+        newErrors' ++ spaceError Rank.Fatal tknIndex n (dpth * 2) -- space error if its okey, it gives []
+        excessError tknIndex excess
+    in validateYAMLSyntaxOrder' rest tknIndex dpth errs
     

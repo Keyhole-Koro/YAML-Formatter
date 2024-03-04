@@ -19,7 +19,11 @@ tokenize handle = do
             char <- hGetChar handle
             case char of
                 ':' -> (Token.Colon :) <$> tokenize handle
-                '-' -> (Token.Dash :) <$> tokenize handle
+                '-' -> do
+                    nextChar <- hGetChar handle
+                    case nextChar of
+                        '-' -> (Token.Comment :) <$> tokenize handle
+                        _ -> (Token.Dash :) <$> tokenize handle
                 '\n' -> (Token.NewLine :) <$> tokenize handle
                 ' ' -> do
                     numSpaces <- spacesCount handle
