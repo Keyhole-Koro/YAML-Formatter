@@ -1,5 +1,6 @@
 module Data.Token where
-data Token = QuotedScalar String
+data Token = SingleQuotedScalar String
+           | DoubleQuotedScalar String
            | Scalar String
            | Key String
            | Value String

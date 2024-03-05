@@ -25,6 +25,10 @@ tokenize handle = do
                         '-' -> (Token.Comment :) <$> tokenize handle
                         _ -> (Token.Dash :) <$> tokenize handle
                 '\n' -> (Token.NewLine :) <$> tokenize handle
+                '{' -> (Token.MappingStart :) <&> tokenize handle
+                '}' -> (Token.MappingEnd :) <&> tokenize handle
+                '[' -> (Token.SequenceStart :) <&> tokenize handle
+                ']' -> (Token.SequenceEnd :) <&> tokenize handle
                 ' ' -> do
                     numSpaces <- spacesCount handle
                     (Token.Space numSpaces :) <$> tokenize handle
@@ -33,9 +37,12 @@ tokenize handle = do
                     let tokenList = [Token.Sharp, Token.Scalar str]
                     restTokens <- tokenize handle
                     return (tokenList ++ restTokens)
+                "'" -> do
+                    str <- readUntilQuote handle
+                    (Token.SingleQuotedScalar str :) <$> tokenize handle
                 '"' -> do
                     str <- readUntilQuote handle
-                    (Token.QuotedScalar str :) <$> tokenize handle
+                    (Token.DoubleQuotedScalar str :) <$> tokenize handle
                 _ -> do
                     let str = [char]
                     rest <- readWhile isScalarChar handle
