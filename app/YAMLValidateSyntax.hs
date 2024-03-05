@@ -38,10 +38,30 @@ excessError tknIndex excess =
         _ -> [ErrorKind.Syntax Rank.Fatal tknIndex "There may be excess tokens" " "]
 
 
-mappingError :: [Token.Token] -> Error
+-- supposed to receive the inside of mappings
+mappingError :: [Token.Token] -> Int -> Error
+mappingError [] tknIndex = [] -- success
+mappingError token tknIndex =
+    case token of
+        -- scalar:scalar,
+        (Token.Scalar _ : Token.Colon : scalar : Token.Comma : rest) ->
+        -- scalar: _ scalar,
+        (Token.Scalar _ : Token.Colon : : Token.Space n : scalar : Token.Comma : rest) ->
+        -- _ scalar: _ scalar,
+        (Token.Space n1 : Token.Scalar _ : Token.Colon : Token.Space n2 : scalar : Token.Comma :rest) -> -- n other than 0 or 1, recomendation error
+        -- _ scalar _ : _ scalar,  
+        (Token.Space n1 : Token.Scalar _ : Token.Space n2 : Token.Colon : Token.Space n3 : scalar : Token.Comma : rest) -> -- n2 other than 0, recomendation error
+        _ -> -- fatal error
 
-sequenceError :: [Token.Token] -> Error
-
+-- supposed to receive the inside of sequences
+sequenceError :: [Token.Token] -> Int -> Error
+sequenceError [] tknIndex = [] -- success
+sequenceError token tknIndex =
+    case token of
+        (Token.Scalar _ : Token.Comma : rest) ->
+        (Token.Space n : Token.Scalar _ : Token.Comma : rest) -> -- n other than 0 or 1, recomendation error
+        (Token.Space n1 : Token.Scalar _ : Token.Space n2 : Token.Comma : rest) -> -- n2 other than 0, recomendation error
+        _ -> -- fatal error
 
 validateYAMLSyntaxOrder' :: [Token.Token] -> Int -> Int -> [Error] -> [Error]
 validateYAMLSyntaxOrder' _ _ _ errs = return $ Just $ Error.CustomError "Unhandled pattern in validation"
@@ -53,30 +73,33 @@ validateYAMLSyntaxOrder' (Token.Sharp : x : Token.NewLine : rest) tknIndex dpth 
         _ -> validateYAMLSyntaxOrder' rest dpth (errs ++ (spaceError Rank.Recomment tknIndex n dpth*2))
 
 -- process initial key value
--- ex) name: Keyhole
+-- key: value
 validateYAMLSyntaxOrder' tokens@(Token.Scalar _ : Token.Colon : Token.Space n : scalar : excess : Token.NewLine : rest) tknIndex dpth errs
     | isScalarToken scalar = do
         let newErrors = spaceError Rank.Fatal tknIndex n (dpth * 2) : excessError tknIndex excess : errs
         validateYAMLSyntaxOrder' rest tknIndex dpth newErrors
     | otherwise = validateYAMLSyntaxOrder' tokens tknIndex dpth newErrors
 
-
+-- key:
 validateYAMLSyntaxOrder' (Token.Scalar _ : Token.Colon : excess : Token.NewLine : rest) tknIndex dpth errs = do
     validateYAMLSyntaxItem 
 
 
 
-
 validateYAMLSyntaxItem :: [Token.Token] -> Int -> Int -> [Error] -> [Error]
 -- _ is space but doesnt consider the number of it
--- ex) _ - element1
+-- _ - element1
 validateYAMLSyntaxItem (Token.Space n1 : Token.Dash : Token.Space n2 : Token.Scalar _ : excess : Token.NewLine : rest ) tknIndex dpth errs = do
 
--- ex) _ key: value
+-- _ key:
+validateYAMLSyntaxItem (Token.Space n1 : Token.Scalar _ : Token.Colon : excess : Token.NewLine : rest) tknIndex dpth errs
+
+
+-- _ key: value
 validateYAMLSyntaxItem (Token.Space n1 : Token.Scalar _ : Token.Colon : Token.Space n : scalar : excess : Token.NewLine : rest) tknIndex dpth errs
     | isScalarToken scalar = do
 
--- ex) _ [element1, element2, element3]
+-- _ [element1, element2, element3]
 validateYAMLSyntaxItem (Token.Space n1 : start : elements : end : excess : Token.NewLine : rest) tknIndex dpth errs
     | isStart start && isEnd end = do 
     | otherwise = 

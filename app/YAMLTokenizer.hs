@@ -29,6 +29,7 @@ tokenize handle = do
                 '}' -> (Token.MappingEnd :) <&> tokenize handle
                 '[' -> (Token.SequenceStart :) <&> tokenize handle
                 ']' -> (Token.SequenceEnd :) <&> tokenize handle
+                ',' -> (Token.Comma :) <&> tokenize handle
                 ' ' -> do
                     numSpaces <- spacesCount handle
                     (Token.Space numSpaces :) <$> tokenize handle

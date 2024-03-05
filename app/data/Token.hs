@@ -11,6 +11,7 @@ data Token = SingleQuotedScalar String
            | SequenceStart
            | SequenceEnd
            | Colon
+           | Comma
            | Dash
            | NewLine
            | Space Int
