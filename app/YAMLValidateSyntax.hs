@@ -50,7 +50,7 @@ validateYAMLSyntaxOrder' (Token.Sharp : x : Token.NewLine : rest) tknIndex dpth 
 -- process initial key value
 validateYAMLSyntaxOrder' (Token.Scalar key : Token.Colon : Token.Space n : Token.QuotedScalar val : excess : Token.NewLine : rest) tknIndex dpth errs = do
     let newErrors = []
-        newErrors' ++ spaceError Rank.Fatal tknIndex n (dpth * 2) -- space error if its okey, it gives []
-        excessError tknIndex excess
+        newErrors ++ spaceError Rank.Fatal tknIndex n (dpth * 2) -- space error if its okey, it gives []
+        newErrors ++ excessError tknIndex excess
     in validateYAMLSyntaxOrder' rest tknIndex dpth errs
     
