@@ -9,7 +9,6 @@ import Error.Error (Err(..))
 import Error.ErrorKind as ErrKind
 import Error.ErrorRank as ErrRank
 
-
 spaceError :: ErrRank -> Int -> Int -> [Err]
 spaceError rnk spcs expectedSpcs
     | spcs > expectedSpcs = [createSpaceError "Excessive number of spaces"]

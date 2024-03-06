@@ -18,9 +18,10 @@ data Tk = Scalar String Int
            | NewLine
            | Sharp
            | EOF
+           | Empty
            deriving (Show, Eq)
 
-data Token = TokenRec { token :: Tk, lineNum :: Int, tokenIndex :: Int } deriving (Show, Eq)
+data Token = TokenRec { token :: Tk, error :: Error.Err}
 
 type LineNumber = Int
 type TokenIndex = Int

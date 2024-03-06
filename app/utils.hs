@@ -9,21 +9,9 @@ import Error.Error (Err(..))
 import Error.ErrorKind (ErrKind)
 import Error.ErrorRank (ErrRank)
 
-createError :: ErrKind -> ErrRank -> Tk.Tk -> Tk.Tk -> String -> String -> Err
-createError errKind errRank oldTk newTk desc info =
-    ErrRec { kind = errKind, rank = errRank, oldToken = oldTk, newToken = newTk, desciption = desc, infomation = info }
-
-replaceWithError :: [Tk.Tk] -> [Err] -> [Tk.Tk]
-replaceWithError tokens errorList = replaceWithError' tokens errorList 0
-  where
-    replaceWithError' :: [Tk.Tk] -> [Err] -> Int -> [Tk.Tk]
-    replaceWithError' [] _ _ = []
-    replaceWithError' tokens [] _ = tokens
-    replaceWithError' (token:tokens) (err:errs) idx
-      | idx == 0 = Tk.Error err : replaceWithError' tokens (err:errs) 0
-      | otherwise = token : replaceWithError' tokens (err:errs) (idx - 1)
-
-
+createError :: ErrKind -> ErrRank -> Tk.Tk -> String -> String -> Err
+createError errKind errRank newTk desc info =
+    ErrRec { kind = errKind, rank = errRank, newToken = newTk, description = desc, information = info }
 
 readWhile :: (Char -> Bool) -> Handle -> IO String
 readWhile p handle = do

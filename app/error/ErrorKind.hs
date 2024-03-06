@@ -7,5 +7,5 @@ data ErrKind = ExcessSpaces
             | Comma
             | SquareBracket
             | DoubleQuotation
-            | NoError  -- New constructor for absence of error
+            | Dummy
             deriving (Show, Eq)
