@@ -1,7 +1,8 @@
 module Data.Token where
-data Token = SingleQuotedScalar String
-           | DoubleQuotedScalar String
-           | Scalar String
+
+import qualified Data.Error as Error
+
+data Token = Scalar String Int
            | Key String
            | Value String
            | Item String
@@ -17,4 +18,5 @@ data Token = SingleQuotedScalar String
            | Space Int
            | Sharp
            | EOF
+           | Error
            deriving (Show, Eq)

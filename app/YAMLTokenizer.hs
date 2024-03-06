@@ -40,15 +40,15 @@ tokenize handle = do
                     return (tokenList ++ restTokens)
                 "'" -> do
                     str <- readUntilQuote handle
-                    (Token.SingleQuotedScalar str :) <$> tokenize handle
+                    (Token.Scalar str 2 :) <$> tokenize handle
                 '"' -> do
                     str <- readUntilQuote handle
-                    (Token.DoubleQuotedScalar str :) <$> tokenize handle
+                    (Token.Scalar str 1 :) <$> tokenize handle
                 _ -> do
                     let str = [char]
                     rest <- readWhile isScalarChar handle
                     let fullStr = str ++ rest
-                    (Token.Scalar fullStr :) <$> tokenize handle
+                    (Token.Scalar fullStr 0 :) <$> tokenize handle
         else
             return [Token.EOF]
 

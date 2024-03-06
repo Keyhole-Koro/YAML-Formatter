@@ -33,29 +33,46 @@ excessError :: Int -> [Token] -> Error
 excessError tknIndex excess =
     case excess of
         (Token.Space n : Token.Comment : _) -> spaceError Rank.Recomment tknIndex n 1
-        (Token.Comment : _) -> spaceError Rank.Recomment tknIndex 0 1
+        (Token.Comment : _) -> spaceError Rank.Recommend tknIndex 0 1
         [] -> []
         _ -> [ErrorKind.Syntax Rank.Fatal tknIndex "There may be excess tokens" " "]
 
+-- | Function to validate the inside of mappings
+mappingError :: [Token.Token] -> Int -> [Error]
+mappingError [] _ = [] -- success
+mappingError tokens tknIndex = validateKeyValue tokens tknIndex
 
--- supposed to receive the inside of mappings
-mappingError :: [Token.Token] -> Int -> Error
-mappingError [] tknIndex = [] -- success
-mappingError token tknIndex =
-    case token of
-        -- scalar:scalar,
-        (Token.Scalar _ : Token.Colon : scalar : Token.Comma : rest) ->
-        -- scalar: _ scalar,
-        (Token.Scalar _ : Token.Colon : : Token.Space n : scalar : Token.Comma : rest) ->
-        -- _ scalar: _ scalar,
-        (Token.Space n1 : Token.Scalar _ : Token.Colon : Token.Space n2 : scalar : Token.Comma :rest) -> -- n other than 0 or 1, recomendation error
-        -- _ scalar _ : _ scalar,  
-        (Token.Space n1 : Token.Scalar _ : Token.Space n2 : Token.Colon : Token.Space n3 : scalar : Token.Comma : rest) -> -- n2 other than 0, recomendation error
-        _ -> -- fatal error
+-- | Function to validate the syntax of key-value pairs
+validateKeyValue :: [Token.Token] -> Int -> [Error]
+validateKeyValue [] _ = []
+validateKeyValue (Token.Scalar _ : Token.Colon : Token.Scalar : Token.Comma : rest) tknIndex =
+    validateSpace rest (tknIndex + )
+    where
+        validateSpace :: [Token.Token] -> Int -> [Error]
+        validateSpace [] _ = []
+        validateSpace (Token.Space n : rest) = spaceError Rank.Recommend tknIndex n 1 : validateSpace rest tknIndex + 1
+        validateSpace (Token.Scalar _ _ : rest) index = validateSpace rest (index + 1)
+        validateSpace (Token.Colon : rest) index = validateSpace rest (index + 1)
+        validateSpace (Token.Comma : rest) index = validateSpace rest (index + 1)
+        validateSpace _ index = [fatalError] -- fatal error
+validateKeyValue _ _ = [fatalError] -- fatal error
 
--- supposed to receive the inside of sequences
-sequenceError :: [Token.Token] -> Int -> Error
-sequenceError [] tknIndex = [] -- success
+
+-- | Function to validate the inside of sequences
+sequenceError :: [Token.Token] -> Int -> [Error]
+sequenceError (Token.Scalar _ _ : []) _ = [] -- success
+sequenceError (Token.Scalar _ _ : Token.Comma : rest) tknIndex = 
+    validateSpace rest ++ sequenceError rest (tknIndex + 2)
+    where
+        -- allow 1 space
+        validateSpace :: [Token.Token] -> tknIndex -> [Error]
+        validateSpace [] = []
+        validateSpace (Token.Scalar _ _ : rest) = validateSpace rest tknIndex + 1
+        validateSpace (Token.Space n : rest) = spaceError Rank.Recommend tknIndex n 1 : validateSpace rest tknIndex + 1
+        validateSpace (Token.Comma : rest) = validateSpace rest tknIndex + 1
+        validateSpace _ = [fatalError] -- fatal error
+        
+
 sequenceError token tknIndex =
     case token of
         (Token.Scalar _ : Token.Comma : rest) ->
@@ -83,8 +100,6 @@ validateYAMLSyntaxOrder' tokens@(Token.Scalar _ : Token.Colon : Token.Space n : 
 -- key:
 validateYAMLSyntaxOrder' (Token.Scalar _ : Token.Colon : excess : Token.NewLine : rest) tknIndex dpth errs = do
     validateYAMLSyntaxItem 
-
-
 
 validateYAMLSyntaxItem :: [Token.Token] -> Int -> Int -> [Error] -> [Error]
 -- _ is space but doesnt consider the number of it

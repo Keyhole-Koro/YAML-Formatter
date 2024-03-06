@@ -30,12 +30,6 @@ elem' n (x : xs)
   | n == x = True
   | otherwise = elem' n xs
 
-isScalarToken :: Token.Token -> Bool
-isScalarToken (Token.SingleQuotedScalar _) = True
-isScalarToken (Token.DoubleQuotedScalar _) = True
-isScalarToken (Token.Scalar _) = True
-isScalarToken _ = False
-
 isStart :: Token.Token -> Bool
 isStart (Token.MappingStart _) = True
 isStart (Token.MappingStart _) = True
