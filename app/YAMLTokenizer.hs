@@ -3,54 +3,54 @@ module YAMLTokenizer where
 import System.IO
 import Data.Char (isSpace)
 
-import Utils
+import qualified Data.Token as Tk
 
-import qualified Data.Token as Token
+import Utils
 
 spacesCount :: Handle -> IO Int
 spacesCount handle = do
     spaces <- readWhile (== ' ') handle  -- Read consecutive spaces
     return (1 + length spaces)
 
-tokenize handle = do
+
+tokenize :: Handle -> IO [Tk.Token]
+tokenize handle = 
+    tokenize' handle 1 1
+
+tokenize' :: Handle -> Tk.LineNumber -> Tk.TokenIndex -> IO [Tk.Token]
+tokenize' handle lineNum tokenIdx = do
     isEOF <- hIsEOF handle
     if not isEOF
         then do
             char <- hGetChar handle
             case char of
-                ':' -> (Token.Colon :) <$> tokenize handle
-                '-' -> do
-                    nextChar <- hGetChar handle
-                    case nextChar of
-                        '-' -> (Token.Comment :) <$> tokenize handle
-                        _ -> (Token.Dash :) <$> tokenize handle
-                '\n' -> (Token.NewLine :) <$> tokenize handle
-                '{' -> (Token.MappingStart :) <&> tokenize handle
-                '}' -> (Token.MappingEnd :) <&> tokenize handle
-                '[' -> (Token.SequenceStart :) <&> tokenize handle
-                ']' -> (Token.SequenceEnd :) <&> tokenize handle
-                ',' -> (Token.Comma :) <&> tokenize handle
+                ':' -> (Tk.TokenRec Tk.Colon lineNum tokenIdx :) <$> tokenize' handle lineNum (tokenIdx + 1)
+                '-' -> (Tk.TokenRec Tk.Dash lineNum tokenIdx :) <$> tokenize' handle lineNum (tokenIdx + 1)
+                '\n' -> (Tk.TokenRec Tk.NewLine lineNum tokenIdx :) <$> tokenize' handle (lineNum + 1) 0
+                '{' -> (Tk.TokenRec Tk.MappingStart lineNum tokenIdx :) <$> tokenize' handle lineNum (tokenIdx + 1)
+                '}' -> (Tk.TokenRec Tk.MappingEnd lineNum tokenIdx :) <$> tokenize' handle lineNum (tokenIdx + 1)
+                '[' -> (Tk.TokenRec Tk.SequenceStart lineNum tokenIdx :) <$> tokenize' handle lineNum (tokenIdx + 1)
+                ']' -> (Tk.TokenRec Tk.SequenceEnd lineNum tokenIdx :) <$> tokenize' handle lineNum (tokenIdx + 1)
+                ',' -> (Tk.TokenRec Tk.Comma lineNum tokenIdx :) <$> tokenize' handle lineNum (tokenIdx + 1)
                 ' ' -> do
                     numSpaces <- spacesCount handle
-                    (Token.Space numSpaces :) <$> tokenize handle
+                    (Tk.TokenRec (Tk.Space numSpaces) lineNum tokenIdx :) <$> tokenize' handle lineNum (tokenIdx + 1)
                 '#' -> do
                     str <- readWhile (/= '\n') handle
-                    let tokenList = [Token.Sharp, Token.Scalar str]
-                    restTokens <- tokenize handle
-                    return (tokenList ++ restTokens)
-                "'" -> do
+                    (Tk.TokenRec (Tk.Comment str) lineNum tokenIdx :) <$> tokenize' handle lineNum (tokenIdx + 1)
+                '\'' -> do
                     str <- readUntilQuote handle
-                    (Token.Scalar str 2 :) <$> tokenize handle
+                    (Tk.TokenRec (Tk.Scalar str 2) lineNum tokenIdx :) <$> tokenize' handle lineNum (tokenIdx + 1)
                 '"' -> do
                     str <- readUntilQuote handle
-                    (Token.Scalar str 1 :) <$> tokenize handle
+                    (Tk.TokenRec (Tk.Scalar str 1) lineNum tokenIdx :) <$> tokenize' handle lineNum (tokenIdx + 1)
                 _ -> do
                     let str = [char]
                     rest <- readWhile isScalarChar handle
                     let fullStr = str ++ rest
-                    (Token.Scalar fullStr 0 :) <$> tokenize handle
+                    (Tk.TokenRec (Tk.Scalar fullStr 0) lineNum tokenIdx :) <$> tokenize' handle lineNum (tokenIdx + 1)
         else
-            return [Token.EOF]
+            return [Tk.TokenRec Tk.EOF lineNum tokenIdx ]
 
 readUntilQuote :: Handle -> IO String
 readUntilQuote handle = do
@@ -64,3 +64,5 @@ readUntilQuote handle = do
             if nextChar == '"'
                 then return str
                 else (str ++) <$> readUntilQuote handle
+
+-- You may need to define isScalarChar, readWhile, and other utility functions used in your code.

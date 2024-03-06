@@ -62,12 +62,13 @@ executable YAML-Formatter
 
     -- Modules included in this executable, other than Main.
     other-modules:
-    - YAMLTokenizer.hs
-    - YAMLValidateSyntax.hs
-    - TokenEnum.hs
-    - ErrorClass.hs
-    - Utils.hs
-
+        YAMLTokenizer
+        YAMLValidateSyntax
+        Error.Error
+        Error.ErrorRank
+        Error.ErrorKind
+        Data.Token
+        Utils
     -- LANGUAGE extensions used by modules in this package.
     -- other-extensions:
 

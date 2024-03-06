@@ -3,7 +3,27 @@ module Utils where
 import System.IO
 import Data.Char (isSpace)
 
-import qualified Data.Token as Token
+import qualified Data.Token as Tk
+
+import Error.Error (Err(..))
+import Error.ErrorKind (ErrKind)
+import Error.ErrorRank (ErrRank)
+
+createError :: ErrKind -> ErrRank -> Tk.Tk -> Tk.Tk -> String -> String -> Err
+createError errKind errRank oldTk newTk desc info =
+    ErrRec { kind = errKind, rank = errRank, oldToken = oldTk, newToken = newTk, desciption = desc, infomation = info }
+
+replaceWithError :: [Tk.Tk] -> [Err] -> [Tk.Tk]
+replaceWithError tokens errorList = replaceWithError' tokens errorList 0
+  where
+    replaceWithError' :: [Tk.Tk] -> [Err] -> Int -> [Tk.Tk]
+    replaceWithError' [] _ _ = []
+    replaceWithError' tokens [] _ = tokens
+    replaceWithError' (token:tokens) (err:errs) idx
+      | idx == 0 = Tk.Error err : replaceWithError' tokens (err:errs) 0
+      | otherwise = token : replaceWithError' tokens (err:errs) (idx - 1)
+
+
 
 readWhile :: (Char -> Bool) -> Handle -> IO String
 readWhile p handle = do
@@ -15,12 +35,6 @@ readWhile p handle = do
             return (char : rest)
         else return []
 
-isTokenRegular :: [Token.Token] -> [Token.Token] -> Bool
-isTokenRegular [] [] = True
-isTokenRegular (x:xs) (y:ys) = x == y && isTokenRegular xs ys  -- 両方のリストの先頭が等しい場合、残りの要素について再帰的に比較
-isTokenRegular _ _ = False
-
-        
 isScalarChar :: Char -> Bool
 isScalarChar c = not (isSpace c || c `elem` [':', '-', '"', '\n', '\r', '\t'])
 
@@ -30,12 +44,12 @@ elem' n (x : xs)
   | n == x = True
   | otherwise = elem' n xs
 
-isStart :: Token.Token -> Bool
-isStart (Token.MappingStart _) = True
-isStart (Token.MappingStart _) = True
+isStart :: Tk.Tk -> Bool
+isStart Tk.SequenceStart = True
+isStart Tk.MappingStart = True
 isStart _ = False
 
-isEnd :: Token.Token -> Bool
-isEnd (Token.MappingEnd _) = True
-isEnd (Token.MappingEnd _) = True
+isEnd :: Tk.Tk -> Bool
+isEnd Tk.SequenceEnd = True
+isEnd Tk.MappingEnd = True
 isEnd _ = False

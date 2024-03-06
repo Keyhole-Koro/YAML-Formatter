@@ -1,12 +1,13 @@
 module Data.Token where
 
-import qualified Data.Error as Error
+import qualified Error.Error as Error
 
-data Token = Scalar String Int
+data Tk = Scalar String Int
            | Key String
            | Value String
            | Item String
            | Comment String
+           | Space Int
            | MappingStart
            | MappingEnd
            | SequenceStart
@@ -15,8 +16,11 @@ data Token = Scalar String Int
            | Comma
            | Dash
            | NewLine
-           | Space Int
            | Sharp
            | EOF
-           | Error
            deriving (Show, Eq)
+
+data Token = TokenRec { token :: Tk, lineNum :: Int, tokenIndex :: Int } deriving (Show, Eq)
+
+type LineNumber = Int
+type TokenIndex = Int
