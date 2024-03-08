@@ -22,6 +22,9 @@ readWhile p handle = do
 isScalarChar :: Char -> Bool
 isScalarChar c = not (isSpace c || c `elem` [':', '-', '"', '\n', '\r', '\t'])
 
+isScalarToken :: Int -> Bool
+isScalarToken n = n == 0
+
 elem' :: (Eq a) => a -> [a] -> Bool
 elem' _ [] = False
 elem' n (x : xs)
