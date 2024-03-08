@@ -32,6 +32,10 @@ excessErrors excess =
                 (ErrRec ErrKind.Excess ErrRank.Fatal tkn Tk.Empty
                 "This may be excess token") : createExcessError rest
 
+excessQuotationError :: Tk.Tk -> Tk.Tk
+excessQuotationError excess =
+    Tk.Error (ErrRec ErrKind.Excess ErrRank.Fatal excess Tk.Empty "The quotation is not needed")
+
 
 -- | Function to validate the inside of sequences
 -- element1, element2, element3 allows spaces (recommend error is occured)
@@ -44,34 +48,43 @@ validateSequence' [] _ = [] -- Base case: empty list, no errors
 validateSequence' (tkn:rest) expectedTkn =
     case tkn of
         Tk.Space n -> spaceError ErrRank.Recommend n 1 : validateSequence' rest expectedTkn
-        Tk.Scalar _ _ -> tkn : validateSequence' rest Tk.Comma
-        Tk.Comma -> tkn : validateSequence' rest (Tk.Scalar "" 0)
+        Tk.Scalar _ _ -> 
+            case expectedTkn of
+                Tk.Scalar _ _ -> tkn : validateSequence' rest Tk.Comma
+                _ -> excessErrors [tkn] ++ validateSequence' rest expectedTkn
+                
+        Tk.Comma -> 
+            case expectedTkn of
+                Tk.Comma -> tkn : validateSequence' rest (Tk.Scalar "" 0)
+                _ -> excessErrors [tkn] ++ validateSequence' rest expectedTkn
+
         _ -> excessErrors [tkn] ++ validateSequence' rest expectedTkn
 
-
-
+-- Define spaceError and excessErrors functions
+-- These functions are assumed to be defined elsewhere in your codebase
 
 
 -- | Function to validate the inside of mappings
-validateMapping :: [Tk.Token] -> [Tk.Token]
+-- key: value, key2: value2
+validateMapping :: [Tk.Tk] -> [Tk.Tk]
 validateMapping [] = [] -- success
-validateMapping (Token.Scalar _ : Token.Colon : Token.Scalar : Token.Comma : rest) = rest
-validateMapping tokens =  : tokens
-    where
-        validateSpace :: [Tk.Token] -> [Tk.Token]
-        validateSpace [] _ = []
-        validateSpace (Token.Space n : rest) = spaceError Rank.Recommend n 1 : validateSpace rest
-        validateSpace (Token.Scalar _ _ : rest) index = validateSpace rest
-        validateSpace (Token.Colon : rest) index = validateSpace rest
-        validateSpace (Token.Comma : rest) index = validateSpace rest
-        validateSpace _ index =  -- fatal error
+validateMapping tokens = validateMapping' tokens (Tk.Scalar _ _) Tk.Colon
 
-validateSequence token tknIndex =
-    case token of
-        (Token.Scalar _ : Token.Comma : rest) ->
-        (Token.Space n : Token.Scalar _ : Token.Comma : rest) -> -- n other than 0 or 1, recomendation error
-        (Token.Space n1 : Token.Scalar _ : Token.Space n2 : Token.Comma : rest) -> -- n2 other than 0, recomendation error
-        _ -> -- fatal error
+validateMapping' :: [Tk.Tk] -> Tk.Tk -> Tk.Tk -> [Tk.Tk]
+validateMapping' [] _ = []
+validateMapping' (tkn:rest) expectedTkn nextTkn =
+    case tkn of
+        Tk.Space n -> spaceError ErrRank.Recommend n 1 : validateSequence' rest expectedTkn
+        Tk.Scalar _ n -> if n == 0 && nextTkn == Tk.Colon
+            then tkn : validateMapping' rest (Tk.Scalar _ _) Tk.Comma
+            else if nextTkn == Tk.Comma
+            then tkn : validateMapping' rest (Tk.Scalar _ _) Tk.Colon
+            else excessQuotationError tkn : validateMapping' rest 
+        Tk.Comma -> tkn : validateMapping' rest (Tk.Scalar _ _) Tk.Colon
+        Tk.Colon -> tkn : validateMapping' rest (Tk.Scalar _ _) Tk.Comma
+        _ -> excessErrors [tkn] ++ validateSequence' rest expectedTkn
+
+
 
 
 
