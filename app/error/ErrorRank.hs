@@ -1,3 +1,3 @@
 module Error.ErrorRank where
     
-data ErrRank = Fatal | Recommend | Dummy deriving (Show, Eq)
+data ErrRank = Fatal | Recommend deriving (Show, Eq)

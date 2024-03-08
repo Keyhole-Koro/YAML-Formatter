@@ -7,5 +7,4 @@ data ErrKind = ExcessSpaces
             | Comma
             | SquareBracket
             | DoubleQuotation
-            | Dummy
             deriving (Show, Eq)

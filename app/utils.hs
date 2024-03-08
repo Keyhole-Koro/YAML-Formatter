@@ -5,13 +5,9 @@ import Data.Char (isSpace)
 
 import qualified Data.Token as Tk
 
-import Error.Error (Err(..))
+import Error.Error (Err)
 import Error.ErrorKind (ErrKind)
 import Error.ErrorRank (ErrRank)
-
-createError :: ErrKind -> ErrRank -> Tk.Tk -> String -> String -> Err
-createError errKind errRank newTk desc info =
-    ErrRec { kind = errKind, rank = errRank, newToken = newTk, description = desc, information = info }
 
 readWhile :: (Char -> Bool) -> Handle -> IO String
 readWhile p handle = do

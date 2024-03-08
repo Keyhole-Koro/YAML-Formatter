@@ -1,53 +1,45 @@
 module YAMLTokenizer where
-
 import System.IO
 import Data.Char (isSpace)
-
-import qualified Data.Token as Tk
-
-import Error.ErrorDummy (dummyErr)
 import Utils
-
+import qualified Data.Token as Token
 spacesCount :: Handle -> IO Int
 spacesCount handle = do
     spaces <- readWhile (== ' ') handle  -- Read consecutive spaces
     return (1 + length spaces)
-
-
-tokenize :: Handle -> IO [Tk.Token]
 tokenize handle = do
     isEOF <- hIsEOF handle
     if not isEOF
         then do
             char <- hGetChar handle
             case char of
-                ':' -> (Tk.TokenRec Tk.Colon dummyErr :) <$> tokenize handle
-                '-' -> (Tk.TokenRec Tk.Dash dummyErr :) <$> tokenize handle
-                '\n' -> (Tk.TokenRec Tk.NewLine dummyErr :) <$> tokenize handle
-                '{' -> (Tk.TokenRec Tk.MappingStart dummyErr :) <$> tokenize handle
-                '}' -> (Tk.TokenRec Tk.MappingEnd dummyErr :) <$> tokenize handle
-                '[' -> (Tk.TokenRec Tk.SequenceStart dummyErr :) <$> tokenize handle
-                ']' -> (Tk.TokenRec Tk.SequenceEnd dummyErr :) <$> tokenize handle
-                ',' -> (Tk.TokenRec Tk.Comma dummyErr :) <$> tokenize handle
+                ':' -> (Token.Colon :) <$> tokenize handle
+                '-' -> (Token.Dash :) <$> tokenize handle
+                '\n' -> (Token.NewLine :) <$> tokenize handle
+                '{' -> (Token.MappingStart :) <$> tokenize handle
+                '}' -> (Token.MappingEnd :) <$> tokenize handle
+                '[' -> (Token.SequenceStart :) <$> tokenize handle
+                ']' -> (Token.SequenceEnd :) <$> tokenize handle
+                ',' -> (Token.Comma :) <$> tokenize handle
                 ' ' -> do
                     numSpaces <- spacesCount handle
-                    (Tk.TokenRec (Tk.Space numSpaces) dummyErr :) <$> tokenize handle
+                    (Token.Space numSpaces :) <$> tokenize handle
                 '#' -> do
                     str <- readWhile (/= '\n') handle
-                    (Tk.TokenRec (Tk.Comment str) dummyErr :) <$> tokenize handle
+                    (Token.Comment str :) <$> tokenize handle
                 '\'' -> do
                     str <- readUntilQuote handle
-                    (Tk.TokenRec (Tk.Scalar str 2) dummyErr :) <$> tokenize handle
+                    (Token.Scalar str 2 :) <$> tokenize handle
                 '"' -> do
                     str <- readUntilQuote handle
-                    (Tk.TokenRec (Tk.Scalar str 1) dummyErr :) <$> tokenize handle
+                    (Token.Scalar str 1 :) <$> tokenize handle
                 _ -> do
                     let str = [char]
                     rest <- readWhile isScalarChar handle
                     let fullStr = str ++ rest
-                    (Tk.TokenRec (Tk.Scalar fullStr 0) dummyErr :) <$> tokenize handle
+                    (Token.Scalar fullStr 0 :) <$> tokenize handle
         else
-            return [Tk.TokenRec Tk.EOF dummyErr]
+            return [Token.EOF]
 
 readUntilQuote :: Handle -> IO String
 readUntilQuote handle = do
@@ -61,5 +53,3 @@ readUntilQuote handle = do
             if nextChar == '"'
                 then return str
                 else (str ++) <$> readUntilQuote handle
-
--- You may need to define isScalarChar, readWhile, and other utility functions used in your code.

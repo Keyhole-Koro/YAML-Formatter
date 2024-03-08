@@ -1,6 +1,6 @@
-module Data.Token where
+module Data.Token (Tk(..)) where
 
-import qualified Error.Error as Error
+import Error.Error (Err)
 
 data Tk = Scalar String Int
            | Key String
@@ -18,10 +18,26 @@ data Tk = Scalar String Int
            | NewLine
            | Sharp
            | EOF
+           | Error Err
            | Empty
-           deriving (Show, Eq)
+           deriving (Eq)
 
-data Token = TokenRec { token :: Tk, error :: Error.Err}
-
-type LineNumber = Int
-type TokenIndex = Int
+instance Show Tk where
+    show (Scalar str int) = "Scalar " ++ show str ++ " " ++ show int
+    show (Key str) = "Key " ++ show str
+    show (Value str) = "Value " ++ show str
+    show (Item str) = "Item " ++ show str
+    show (Comment str) = "Comment " ++ show str
+    show (Space int) = "Space " ++ show int
+    show MappingStart = "MappingStart"
+    show MappingEnd = "MappingEnd"
+    show SequenceStart = "SequenceStart"
+    show SequenceEnd = "SequenceEnd"
+    show Colon = "Colon"
+    show Comma = "Comma"
+    show Dash = "Dash"
+    show NewLine = "NewLine"
+    show Sharp = "Sharp"
+    show EOF = "EOF"
+    show Empty = "Empty"
+    show (Error err) = "!!!Error!!! " ++ show err

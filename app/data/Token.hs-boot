@@ -1,4 +1,6 @@
 module Data.Token where
 
 data Tk
-data Token
+
+instance Show Tk
+instance Eq Tk
