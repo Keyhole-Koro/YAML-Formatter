@@ -23,30 +23,33 @@ excessErrors excess =
     case excess of
         (Tk.Space _ : Tk.Comment _ : _) -> excess
         (Tk.Comment _ : _) -> excess
-        _ -> createExcessError excess
+        _ -> createexcessErrors excess
     where
-        createExcessError :: [Tk.Tk] -> [Tk.Tk]
-        createExcessError [] = []
-        createExcessError (tkn:rest) =
+        createexcessErrors :: [Tk.Tk] -> [Tk.Tk]
+        createexcessErrors [] = []
+        createexcessErrors (tkn:rest) =
             Tk.Error
                 (ErrRec ErrKind.Excess ErrRank.Fatal tkn Tk.Empty
-                "This may be excess token") : createExcessError rest
+                "This may be excess token") : createexcessErrors rest
 
 scalarKeyError :: Tk.Tk -> Tk.Tk
 scalarKeyError tkn =
     case tkn of
         Tk.Scalar str n -> if isScalarToken n
             then tkn
-            else Tk.Err (ErrRec ErrKind.Key ErrRank.Recommend tkn (Tk.Scalar str 0) "This is not supposed to be quoted")
-        _ -> Tk.Err (ErrRec ErrKind.ImplementationError ErrRank.ImplementationError Tk.Empty Tk.Empty "this is not sopposed to happen")
+            else Tk.Error (ErrRec ErrKind.Key ErrRank.Recommend tkn (Tk.Scalar str 0) "This is not supposed to be quoted")
+        _ -> Tk.Error (ErrRec ErrKind.ImplementationError ErrRank.ImplementationError Tk.Empty Tk.Empty "this is not supposed to happen")
 
 excessQuotationError :: Tk.Tk -> Tk.Tk
 excessQuotationError excess =
     Tk.Error (ErrRec ErrKind.Excess ErrRank.Fatal excess Tk.Empty "The quotation is not needed")
 
+invalidError :: Tk.Tk -> Tk.Tk
+invalidError invalid =
+    Tk.Error (ErrRec ErrKind.Invalid ErrRank.Fatal invalid Tk.Empty "This token is unnecessary for this syntax")
 
 -- | Function to validate the inside of sequences
--- element1, element2, element3 allows spaces (recommend error is occured)
+-- element1, element2, element3 allows spaces (recommend error is occurred)
 validateSequence :: [Tk.Tk] -> [Tk.Tk]
 validateSequence [] = [] -- Base case: empty list, no errors
 validateSequence tokens = validateSequence' tokens (Tk.Scalar "" (-1))
@@ -60,66 +63,59 @@ validateSequence' (tkn:rest) expectedTkn =
             case expectedTkn of
                 Tk.Scalar _ _ -> tkn : validateSequence' rest Tk.Comma
                 _ -> excessErrors [tkn] ++ validateSequence' rest expectedTkn
-                
         Tk.Comma -> 
             case expectedTkn of
                 Tk.Comma -> tkn : validateSequence' rest (Tk.Scalar "" 0)
                 _ -> excessErrors [tkn] ++ validateSequence' rest expectedTkn
-
         _ -> excessErrors [tkn] ++ validateSequence' rest expectedTkn
-
--- Define spaceError and excessErrors functions
--- These functions are assumed to be defined elsewhere in your codebase
-
 
 -- | Function to validate the inside of mappings
 -- key: value, key2: value2
 validateMapping :: [Tk.Tk] -> [Tk.Tk]
 validateMapping [] = [] -- success
-validateMapping tokens = validateMapping' tokens (Tk.Scalar _ _) Tk.Colon
+validateMapping tokens = validateMapping' tokens (Tk.Scalar "" (-1)) Tk.Colon
 
 validateMapping' :: [Tk.Tk] -> Tk.Tk -> Tk.Tk -> [Tk.Tk]
-validateMapping' [] _ = []
+validateMapping' [] _ _ = []
 validateMapping' (tkn:rest) expectedTkn nextTkn =
     case tkn of
-        Tk.Space n -> spaceError ErrRank.Recommend n 1 : validateSequence' rest expectedTkn
-        Tk.Scalar _ n -> if n == 0 && nextTkn == Tk.Colon
-            then tkn : validateMapping' rest (Tk.Scalar _ _) Tk.Comma
-            else if nextTkn == Tk.Comma
-            then tkn : validateMapping' rest (Tk.Scalar _ _) Tk.Colon
-            else excessQuotationError tkn : validateMapping' rest 
-        Tk.Comma -> tkn : validateMapping' rest (Tk.Scalar _ _) Tk.Colon
-        Tk.Colon -> tkn : validateMapping' rest (Tk.Scalar _ _) Tk.Comma
-        _ -> excessErrors [tkn] ++ validateSequence' rest expectedTkn
+        Tk.Space n -> spaceError ErrRank.Recommend n 1 : validateMapping' rest expectedTkn nextTkn
+        Tk.Scalar _ n ->
+            case expectedTkn of
+                Tk.Scalar _ _ ->
+                    if n == 0 && nextTkn == Tk.Colon -- key
+                        then tkn : validateMapping' rest Tk.Colon (Tk.Scalar "" (-1))
+                        else if nextTkn == Tk.Comma -- value
+                            then tkn : validateMapping' rest Tk.Comma (Tk.Scalar "" (-1))
+                            else excessQuotationError tkn : validateMapping' rest Tk.Comma (Tk.Scalar "" (-1))
+                _ -> invalidError tkn : validateMapping' rest expectedTkn nextTkn
+        Tk.Comma ->
+            case expectedTkn of
+                Tk.Comma -> tkn : validateMapping' rest (Tk.Scalar "" (-1)) Tk.Colon
+                _ -> invalidError tkn : validateMapping' rest expectedTkn nextTkn
+        Tk.Colon ->
+            case tkn of
+                Tk.Colon -> tkn : validateMapping' rest (Tk.Scalar "" (-1)) Tk.Comma
+                _ -> invalidError tkn : validateMapping' rest expectedTkn nextTkn
+        _ -> excessErrors [tkn] ++ validateMapping' rest expectedTkn nextTkn
 
-
-validateYAMLSyntax :: [Tk.Tk] -> IO ()
-
-validateYAMLSyntaxOrder' :: [Tk.Tk] -> [Tk.Tk]
+-- Validate YAML Syntax Order
+validateYAMLSyntaxOrder' :: [Tk.Tk] -> Int -> [Tk.Tk]
 validateYAMLSyntaxOrder' [] _ = []
 
--- process initial key value
--- key: value
-validateYAMLSyntaxOrder' (Tk.Scalar str sn: Tk.Colon : Tk.Space n : Tk.Scalar str2 m : excess : Tk.NewLine : rest) = 
-    scalarKeyError (Tk.Scalar str sn) : Tk.Colon : spaceError (ErrRank.Space n 1) : Tk.Scalar str3 m : excessError excess : Tk.NewLine : validateYAMLSyntaxItem rest 1
+-- Process initial key value
+validateYAMLSyntaxOrder' (Tk.Scalar str sn : Tk.Colon : Tk.Space n : Tk.Scalar str2 m : excess : Tk.NewLine : rest) _ =
+    scalarKeyError (Tk.Scalar str sn) : Tk.Colon : spaceError ErrRank.Recommend n 1 : Tk.Scalar str2 m : excessErrors [excess] ++ [Tk.NewLine] ++ validateYAMLSyntaxOrder' rest 1
 
--- key:
-validateYAMLSyntaxOrder' (Tk.Scalar str sn : Tk.Colon : excess : Tk.NewLine : rest) =
-    Tk.Scalar str sn : Tk.Colon : excessError excess : Tk.NewLine : validateYAMLSyntaxItem rest 1
+-- Key without value
+validateYAMLSyntaxOrder' (Tk.Scalar str sn : Tk.Colon : excess : Tk.NewLine : rest) _ =
+    Tk.Scalar str sn : Tk.Colon : excessErrors [excess] ++ [Tk.NewLine] ++ validateYAMLSyntaxOrder' rest 1
 
+-- Validate YAML Syntax Item
+validateYAMLSyntaxItem :: [Tk.Tk] -> Int -> [Tk.Tk]
 
-validateYAMLSyntaxItem :: [Tk.Tk] -> [Tk.Tk]
+-- Element with dash
+validateYAMLSyntaxItem (Tk.Space n1 : Tk.Dash : Tk.Space n2 : Tk.Scalar str n : excess : Tk.NewLine : rest) depth =
+    spaceError ErrRank.Fatal n1 (depth*2) : Tk.Dash : spaceError ErrRank.Recommend n2 1 : Tk.Scalar str n : excessErrors [excess] ++ [Tk.NewLine] ++ validateYAMLSyntaxItem rest (depth + 1)
 
--- _ is space but doesnt consider the number of it
--- _ - element1
-validateYAMLSyntaxItem (Tk.Space n1 : Tk.Dash : Tk.Space n2 : Tk.Scalar str n : excess : Tk.NewLine : rest ) depth =
-    spaceError ErrRank.Fatal n1 (depth*2) : Tk.Dash : spaceError ErrRank.Recommend n2 1 : Tk.Scalar str n : excessError excess : Tk.NewLine : validateYAMLSyntaxItem rest depth+1
-
--- _ key:
-validateYAMLSyntaxItem (Tk.Space n1 : Tk.Scalar str n : Tk.Colon : excess : Tk.NewLine : rest) depth =
-    spaceError ErrRank.Fatal n1 (depth*2) : scalarKeyError (Tk.Scaar str n) : Tk.Colon : excessError excess : Tk.NewLine : validateYAMLSyntaxItem rest depth+1
-
-
--- _ [element1, element2, element3]
-
--- _ {key1:value1, key2:value2, key3:value3}
+-- Key with value
