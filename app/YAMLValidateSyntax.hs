@@ -18,6 +18,7 @@ spaceError rnk spcs expectedSpcs
         createSpaceError :: String -> Tk.Tk
         createSpaceError errorMsg = Tk.Error (ErrRec ErrKind.Excess rnk (Tk.Space spcs) (Tk.Space expectedSpcs) errorMsg)
 
+-- add block scalar processing
 excessErrors :: [Tk.Tk] -> [Tk.Tk]
 excessErrors excess =
     case excess of
@@ -65,7 +66,7 @@ validateSequence' (tkn:rest) expectedTkn =
                 _ -> excessErrors [tkn] ++ validateSequence' rest expectedTkn
         Tk.Comma -> 
             case expectedTkn of
-                Tk.Comma -> tkn : validateSequence' rest (Tk.Scalar "" St.Empty)
+                Tk.Comma -> tkn : validateSequence' rest (Tk.Scalar "" St.NoQuote)
                 _ -> excessErrors [tkn] ++ validateSequence' rest expectedTkn
         _ -> excessErrors [tkn] ++ validateSequence' rest expectedTkn
 
@@ -111,18 +112,29 @@ validateYAMLSyntaxOrder' (Tk.Scalar str st1 : Tk.Colon : Tk.Space n : Tk.Scalar 
 validateYAMLSyntaxOrder' (Tk.Scalar str st : Tk.Colon : excess : Tk.NewLine : rest) _ =
     Tk.Scalar str st : Tk.Colon : excessErrors [excess] ++ [Tk.NewLine] ++ validateYAMLSyntaxOrder' rest 1
 
--- key: |
-validate
-
 -- Validate YAML Syntax Item
 validateYAMLSyntaxItem :: [Tk.Tk] -> Int -> [Tk.Tk]
 
--- _ Element with dash
+-- _ - element
 validateYAMLSyntaxItem (Tk.Space n1 : Tk.Dash : Tk.Space n2 : Tk.Scalar str st : excess : Tk.NewLine : rest) depth =
-    spaceError ErrRank.Fatal n1 (depth*2) : Tk.Dash : spaceError ErrRank.Recommend n2 1 : Tk.Scalar str st : excessErrors [excess] ++ [Tk.NewLine] ++ validateYAMLSyntaxItem rest (depth + 1)
+    spaceError ErrRank.Fatal n1 (depth*2) : Tk.Dash : spaceError ErrRank.Recommend n2 1 : Tk.Scalar str st : excessErrors [excess] ++ [Tk.NewLine] ++ validateYAMLSyntaxItem rest depth
+
+-- _ -
+validateYAMLSyntaxItem (Tk.Space n1 : Tk.Dash : excess : Tk.NewLine : rest) depth =
+    spaceError ErrRank.Fatal n1 (depth*2) : Tk.Dash : excessErrors [excess] ++ [Tk.NewLine] ++ validateYAMLSyntaxItem rest (depth + 1)
 
 -- _ key: value
 
---
-
 -- variable existence
+
+
+-- key: |
+validate
+
+-- key: >
+
+validateYAMLSyntaxItem tokens@(tkn:rest) depth =
+    case tkn of
+        Tk.Space n -> 
+        Tk.Scalar str st -> validateYAMLSyntaxOrder' tokens
+        _ -> excessErrors [tkn] : validateYAMLSyntaxItem rest

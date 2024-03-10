@@ -30,6 +30,12 @@ tokenize handle = do
                 '#' -> do
                     str <- readWhile (/= '\n') handle
                     (Token.Comment str :) <$> tokenize handle
+                --'|' -> do
+                --    str <- readUntilBlockEnds handle
+                --    (Token.Scalar str St.LiteralBlock) <$> tokenize handle
+                --'>' -> do
+                --    str <- readUntilBlockEnds handle
+                --    (Token.Scalar str St.FoldedBlock) <$> tokenize handle
                 '\'' -> do
                     str <- readUntilQuote handle
                     (Token.Scalar str St.DoubleQuote :) <$> tokenize handle
@@ -56,11 +62,3 @@ readUntilQuote handle = do
             if nextChar == '"'
                 then return str
                 else (str ++) <$> readUntilQuote handle
-
-readUntilBlockEnds :: Handle -> IO String
-readUntilBlockEnds handle = do
-    rest <- readWhile (/='n')
-    nextChar <- hGetChar handle
-    if nextChar == ' '
-    then readUntilBlockEnds handle
-    else
