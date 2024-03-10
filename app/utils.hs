@@ -4,6 +4,7 @@ import System.IO
 import Data.Char (isSpace)
 
 import qualified Data.Token as Tk
+import qualified DAta.ScalarTypes as ST
 
 import Error.Error (Err)
 import Error.ErrorKind (ErrKind)
@@ -22,8 +23,8 @@ readWhile p handle = do
 isScalarChar :: Char -> Bool
 isScalarChar c = not (isSpace c || c `elem` [':', '-', '"', '\n', '\r', '\t'])
 
-isScalarToken :: Int -> Bool
-isScalarToken n = n == 0
+isScalarToken :: ST.ST -> Bool
+isScalarToken  = st == ST.NoQuote
 
 elem' :: (Eq a) => a -> [a] -> Bool
 elem' _ [] = False

@@ -1,8 +1,11 @@
 module YAMLTokenizer where
 import System.IO
+
 import Data.Char (isSpace)
 import Utils
 import qualified Data.Token as Token
+import qualified Data.ScalarTypes as St
+
 spacesCount :: Handle -> IO Int
 spacesCount handle = do
     spaces <- readWhile (== ' ') handle  -- Read consecutive spaces
@@ -29,15 +32,15 @@ tokenize handle = do
                     (Token.Comment str :) <$> tokenize handle
                 '\'' -> do
                     str <- readUntilQuote handle
-                    (Token.Scalar str 2 :) <$> tokenize handle
+                    (Token.Scalar str St.DoubleQuote :) <$> tokenize handle
                 '"' -> do
                     str <- readUntilQuote handle
-                    (Token.Scalar str 1 :) <$> tokenize handle
+                    (Token.Scalar str St.Quote :) <$> tokenize handle
                 _ -> do
                     let str = [char]
                     rest <- readWhile isScalarChar handle
                     let fullStr = str ++ rest
-                    (Token.Scalar fullStr 0 :) <$> tokenize handle
+                    (Token.Scalar fullStr St.NoQuote :) <$> tokenize handle
         else
             return [Token.EOF]
 
@@ -53,3 +56,11 @@ readUntilQuote handle = do
             if nextChar == '"'
                 then return str
                 else (str ++) <$> readUntilQuote handle
+
+readUntilBlockEnds :: Handle -> IO String
+readUntilBlockEnds handle = do
+    rest <- readWhile (/='n')
+    nextChar <- hGetChar handle
+    if nextChar == ' '
+    then readUntilBlockEnds handle
+    else
