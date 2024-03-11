@@ -132,7 +132,6 @@ validateYAMLSyntaxItem (Tk.Space n1 : Tk.Dash : excess : Tk.NewLine : rest) dept
 validate
 
 -- key: >
-
 validateYAMLSyntaxItem tokens@(tkn:rest) depth =
     case tkn of
         Tk.Space n -> 

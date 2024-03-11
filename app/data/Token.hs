@@ -9,6 +9,12 @@ data Tk = Scalar String TS
            | Item String
            | Comment String
            | Space Int
+           | LiteralBlockStart -- |
+           | LiteralBlockPlusStart -- |+
+           | LiteralBlockSMinustart -- |-
+           | FoldedBlockStart -- >
+           | FoldedBlockPlusStart -- >+
+           | FoldedBlockMinusStart -- >-
            | MappingStart
            | MappingEnd
            | SequenceStart

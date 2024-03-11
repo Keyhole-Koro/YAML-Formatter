@@ -3,52 +3,69 @@ import System.IO
 
 import Data.Char (isSpace)
 import Utils
-import qualified Data.Token as Token
+import qualified Data.Token as Tk
 import qualified Data.ScalarTypes as St
 
 spacesCount :: Handle -> IO Int
 spacesCount handle = do
     spaces <- readWhile (== ' ') handle  -- Read consecutive spaces
     return (1 + length spaces)
+
 tokenize handle = do
     isEOF <- hIsEOF handle
     if not isEOF
         then do
             char <- hGetChar handle
             case char of
-                ':' -> (Token.Colon :) <$> tokenize handle
-                '-' -> (Token.Dash :) <$> tokenize handle
-                '\n' -> (Token.NewLine :) <$> tokenize handle
-                '{' -> (Token.MappingStart :) <$> tokenize handle
-                '}' -> (Token.MappingEnd :) <$> tokenize handle
-                '[' -> (Token.SequenceStart :) <$> tokenize handle
-                ']' -> (Token.SequenceEnd :) <$> tokenize handle
-                ',' -> (Token.Comma :) <$> tokenize handle
+                ':' -> (Tk.Colon :) <$> tokenize handle
+                '-' -> (Tk.Dash :) <$> tokenize handle
+                '\n' -> (Tk.NewLine :) <$> tokenize handle
+                '{' -> (Tk.MappingStart :) <$> tokenize handle
+                '}' -> (Tk.MappingEnd :) <$> tokenize handle
+                '[' -> (Tk.SequenceStart :) <$> tokenize handle
+                ']' -> (Tk.SequenceEnd :) <$> tokenize handle
+                ',' -> (Tk.Comma :) <$> tokenize handle
                 ' ' -> do
                     numSpaces <- spacesCount handle
-                    (Token.Space numSpaces :) <$> tokenize handle
+                    (Tk.Space numSpaces :) <$> tokenize handle
                 '#' -> do
                     str <- readWhile (/= '\n') handle
-                    (Token.Comment str :) <$> tokenize handle
-                --'|' -> do
-                --    str <- readUntilBlockEnds handle
-                --    (Token.Scalar str St.LiteralBlock) <$> tokenize handle
-                --'>' -> do
-                --    str <- readUntilBlockEnds handle
-                --    (Token.Scalar str St.FoldedBlock) <$> tokenize handle
+                    (Tk.Comment str :) <$> tokenize handle
                 '\'' -> do
                     str <- readUntilQuote handle
-                    (Token.Scalar str St.DoubleQuote :) <$> tokenize handle
+                    (Tk.Scalar str St.DoubleQuote :) <$> tokenize handle
                 '"' -> do
                     str <- readUntilQuote handle
-                    (Token.Scalar str St.Quote :) <$> tokenize handle
+                    (Tk.Scalar str St.Quote :) <$> tokenize handle
+                '|' -> do
+                    nextChar <- hLookAhead handle
+                    case nextChar of
+                        '+' -> do
+                            _ <- hGetChar handle -- consume
+                            (Tk.LiteralBlockPlusStart :) <$> tokenize handle
+                        '-' -> do
+                            _ <- hGetChar handle
+                            (Tk.LiteralBlockSMinustart :) <$> tokenize handle
+                        '\n' -> (Tk.LiteralBlockStart :) <$> tokenize handle
+                        _ -> tokenize handle
+                '>' -> do
+                    nextChar <- hLookAhead handle
+                    case nextChar of
+                        '+' -> do
+                            _ <- hGetChar handle
+                            (Tk.FoldedBlockPlusStart :) <$> tokenize handle
+                        '-' -> do
+                            _ <- hGetChar handle
+                            (Tk.FoldedBlockMinusStart :) <$> tokenize handle
+                        '\n' -> (Tk.FoldedBlockStart :) <$> tokenize handle
+                        _ -> tokenize handle
                 _ -> do
                     let str = [char]
                     rest <- readWhile isScalarChar handle
                     let fullStr = str ++ rest
-                    (Token.Scalar fullStr St.NoQuote :) <$> tokenize handle
+                    (Tk.Scalar fullStr St.NoQuote :) <$> tokenize handle
         else
-            return [Token.EOF]
+            return [Tk.EOF]
 
 readUntilQuote :: Handle -> IO String
 readUntilQuote handle = do
@@ -62,3 +79,21 @@ readUntilQuote handle = do
             if nextChar == '"'
                 then return str
                 else (str ++) <$> readUntilQuote handle
+
+tokenizeBlock :: [Tk.Tk] -> [Tk.Tk]
+tokenizeBlock (tkn:rest) =
+    case tkn of
+        Tk.LiteralBlockStart -> 
+        Tk.FoldedBlockStart -> 
+        _ -> tkn : tokenizeBlock rest
+
+readTknUntilBlockEnds :: [Tk.Tk] -> [Tk.Tk]
+readTknUntilBlockEnds (tkn:rest) =
+    case tkn of
+        Tk.NewLine -> readTknUntilBlockEnds' rest
+    where
+        readTknUntilBlockEnds' [Tk.Tk] -> [Tk.Tk]
+        readTknUntilBlockEnds' (tkn:rest) =
+            case tkn of
+                Tk.Space n -> 
+                _ -> 
