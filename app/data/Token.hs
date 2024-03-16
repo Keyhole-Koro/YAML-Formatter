@@ -1,20 +1,16 @@
 module Data.Token (Tk(..)) where
 
-import Data.ScalarTypes (TS)
+import Data.ScalarTypes (ST)
 import Error.Error (Err)
 
-data Tk = Scalar String TS
+data Tk = Scalar String ST
            | Key String
            | Value String
            | Item String
            | Comment String
            | Space Int
-           | LiteralBlockStart -- |
-           | LiteralBlockPlusStart -- |+
-           | LiteralBlockSMinustart -- |-
-           | FoldedBlockStart -- >
-           | FoldedBlockPlusStart -- >+
-           | FoldedBlockMinusStart -- >-
+           | LiteralBlockStart ST -- | |+ |-
+           | FoldedBlockStart ST -- > >+ >-
            | MappingStart
            | MappingEnd
            | SequenceStart

@@ -137,3 +137,26 @@ validateYAMLSyntaxItem tokens@(tkn:rest) depth =
         Tk.Space n -> 
         Tk.Scalar str st -> validateYAMLSyntaxOrder' tokens
         _ -> excessErrors [tkn] : validateYAMLSyntaxItem rest
+
+
+
+validateYAMLSyntaxItem (Tk.LiteralBlockStart st : rest) depth
+    = do
+
+
+
+
+
+processTokens (Tk.LiteralBlockStart : rest) = Tk.LiteralBlockStart : processLiteralBlock rest
+processTokens (Tk.FoldedBlockStart : rest) = Tk.FoldedBlockStart : processFoldedBlock rest
+processTokens (token : rest) = token : processTokens rest
+
+processLiteralBlock :: [Tk.Token] -> [Tk.Token]
+processLiteralBlock tokens =
+    let (block, remainingTokens) = break (== Tk.LiteralBlockEnd) tokens
+    in block ++ [Tk.LiteralBlockEnd] ++ processTokens (drop 1 remainingTokens)
+
+processFoldedBlock :: [Tk.Token] -> [Tk.Token]
+processFoldedBlock tokens =
+    let (block, remainingTokens) = break (== Tk.FoldedBlockEnd) tokens
+    in block ++ [Tk.FoldedBlockEnd] ++ processTokens (drop 1 remainingTokens)
