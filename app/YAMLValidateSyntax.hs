@@ -1,5 +1,7 @@
 module YAMLValidateSyntax where
 
+import Data.List (nub)
+
 import YAMLTokenizer
 import Utils
 
@@ -17,6 +19,19 @@ spaceError rnk spcs expectedSpcs
     where
         createSpaceError :: String -> Tk.Tk
         createSpaceError errorMsg = Tk.Error (ErrRec ErrKind.Excess rnk (Tk.Space spcs) (Tk.Space expectedSpcs) errorMsg)
+
+validateYAMLSpace :: [Tk.Tk] -> [Tk.Tk]
+validateYAMLSpace
+
+
+excludeItems :: [Tk] -> [Tk]
+excludeItems = filter (\x -> case x of
+                               Item _ -> False
+                               _ -> True)
+uniqueList :: [Tk] -> [Tk]
+uniqueList = nub
+
+
 
 -- add block scalar processing
 excessErrors :: [Tk.Tk] -> [Tk.Tk]

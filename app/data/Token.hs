@@ -3,7 +3,7 @@ module Data.Token (Tk(..)) where
 import Data.ScalarTypes (ST)
 import Error.Error (Err)
 
-data Tk = Scalar String ST
+data Kind = Scalar String ST
            | Key String
            | Value String
            | Item String
@@ -24,6 +24,13 @@ data Tk = Scalar String ST
            | Error Err
            | Empty
            deriving (Eq)
+
+data Token = Token {
+    kind :: Kind,
+    line :: Int,
+    line :: Int
+    } deriving (Show)
+
 
 instance Show Tk where
     show (Scalar str st) = "Scalar " ++ show str ++ " " ++ show st

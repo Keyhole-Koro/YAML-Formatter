@@ -1,5 +1,7 @@
-module YAMLTokenizer where
+module YAMLtokenizer where
 import System.IO
+import Data.IORef
+import System.IO.Unsafe (unsafePerformIO)
 
 import Data.Char (isSpace)
 import Utils
@@ -11,61 +13,83 @@ spacesCount handle = do
     spaces <- readWhile (== ' ') handle  -- Read consecutive spaces
     return (1 + length spaces)
 
+createToken :: Kind -> IORef Int -> IORef Int -> IO Tk
+createToken kind lineRef colRef = do
+    line <- readIORef lineRef
+    col <- readIORef colRef
+    return $ Tk kind line col
+
+lineRef :: IORef Int
+lineRef = unsafePerformIO (newIORef 0)
+
+colRef :: IORef Int
+colRef = unsafePerformIO (newIORef 0)
+
+tokenize :: Handle -> IO [Tk]
 tokenize handle = do
     isEOF <- hIsEOF handle
     if not isEOF
         then do
-            char <- hGetChar handle
+            char <- hGetChar 
+            modifyIORef' colRef (+1)
             case char of
-                ':' -> (Tk.Colon :) <$> tokenize handle
-                '-' -> (Tk.Dash :) <$> tokenize handle
-                '\n' -> (Tk.NewLine :) <$> tokenize handle
-                '{' -> (Tk.MappingStart :) <$> tokenize handle
-                '}' -> (Tk.MappingEnd :) <$> tokenize handle
-                '[' -> (Tk.SequenceStart :) <$> tokenize handle
-                ']' -> (Tk.SequenceEnd :) <$> tokenize handle
-                ',' -> (Tk.Comma :) <$> tokenize handle
+                ':' -> (createToken Kind.Colon :) <$> tokenize handle
+                '-' -> (createToken Kind.Dash :) <$> tokenize handle
+                '\n' -> do
+                    modifyIORef lineRef (+1)
+                    writeIORef colRef (0)
+                    (createToken Kind.NewLine :) <$> tokenize handle
+                '{' -> (createToken Kind.MappingStart :) <$> tokenize handle
+                '}' -> (createToken Kind.MappingEnd :) <$> tokenize handle
+                '[' -> (createToken Kind.SequenceStart :) <$> tokenize handle
+                ']' -> (createToken Kind.SequenceEnd :) <$> tokenize handle
+                ',' -> (createToken Kind.Comma :) <$> tokenize handle
                 ' ' -> do
                     numSpaces <- spacesCount handle
-                    (Tk.Space numSpaces :) <$> tokenize handle
+                    modifyIORef colRef (+ numSpaces)
+                    (createToken (Kind.Space numSpaces) :) <$> tokenize handle
                 '#' -> do
                     str <- readWhile (/= '\n') handle
-                    (Tk.Comment str :) <$> tokenize handle
+                    modifyIORef colRef (+ length str)
+                    (createToken (Kind.Comment str) :) <$> tokenize handle
                 '\'' -> do
                     str <- readUntilQuote handle
-                    (Tk.Scalar str St.DoubleQuote :) <$> tokenize handle
+                    modifyIORef colRef (+ length str)
+                    (createToken (Kind.Scalar str St.DoubleQuote) :) <$> tokenize handle
                 '"' -> do
                     str <- readUntilQuote handle
-                    (Tk.Scalar str St.Quote :) <$> tokenize handle
+                    modifyIORef colRef (+ length str)
+                    (createToken (Kind.Scalar str St.Quote) :) <$> tokenize handle
                 '|' -> do
                     nextChar <- hLookAhead handle
                     case nextChar of
                         '+' -> do
                             _ <- hGetChar handle -- consume
-                            (Tk.LiteralBlockPlusStart :) <$> tokenize handle
+                            (createToken Kind.LiteralBlockPlusStart :) <$> tokenize handle
                         '-' -> do
                             _ <- hGetChar handle
-                            (Tk.LiteralBlockSMinustart :) <$> tokenize handle
-                        '\n' -> (Tk.LiteralBlockStart :) <$> tokenize handle
+                            (createToken Kind.LiteralBlockSMinustart :) <$> tokenize handle
+                        '\n' -> (createToken Kind.LiteralBlockStart :) <$> tokenize handle
                         _ -> tokenize handle
                 '>' -> do
                     nextChar <- hLookAhead handle
                     case nextChar of
                         '+' -> do
                             _ <- hGetChar handle
-                            (Tk.FoldedBlockPlusStart :) <$> tokenize handle
+                            (createToken Kind.FoldedBlockPlusStart :) <$> tokenize handle
                         '-' -> do
                             _ <- hGetChar handle
-                            (Tk.FoldedBlockMinusStart :) <$> tokenize handle
-                        '\n' -> (Tk.FoldedBlockStart :) <$> tokenize handle
+                            (createToken Kind.FoldedBlockMinusStart :) <$> tokenize handle
+                        '\n' -> (createToken Kind.FoldedBlockStart :) <$> tokenize handle
                         _ -> tokenize handle
                 _ -> do
                     let str = [char]
                     rest <- readWhile isScalarChar handle
                     let fullStr = str ++ rest
-                    (Tk.Scalar fullStr St.NoQuote :) <$> tokenize handle
+                    (createToken (Kind.Scalar fullStr St.NoQuote) :) <$> tokenize handle
         else
-            return [Tk.EOF]
+            return [createToken Kind.EOF]
+
 
 readUntilQuote :: Handle -> IO String
 readUntilQuote handle = do
@@ -80,20 +104,20 @@ readUntilQuote handle = do
                 then return str
                 else (str ++) <$> readUntilQuote handle
 
-tokenizeBlock :: [Tk.Tk] -> [Tk.Tk]
+tokenizeBlock :: [Kind.Tk] -> [Kind.Tk]
 tokenizeBlock (tkn:rest) =
     case tkn of
-        Tk.LiteralBlockStart -> 
-        Tk.FoldedBlockStart -> 
+        Kind.LiteralBlockStart -> 
+        Kind.FoldedBlockStart -> 
         _ -> tkn : tokenizeBlock rest
 
-readTknUntilBlockEnds :: [Tk.Tk] -> [Tk.Tk]
+readTknUntilBlockEnds :: [Kind.Tk] -> [Kind.Tk]
 readTknUntilBlockEnds (tkn:rest) =
     case tkn of
-        Tk.NewLine -> readTknUntilBlockEnds' rest
+        Kind.NewLine -> readTknUntilBlockEnds' rest
     where
-        readTknUntilBlockEnds' [Tk.Tk] -> [Tk.Tk]
+        readTknUntilBlockEnds' [Kind.Tk] -> [Kind.Tk]
         readTknUntilBlockEnds' (tkn:rest) =
             case tkn of
-                Tk.Space n -> 
+                Kind.Space n -> 
                 _ -> 
