@@ -1,6 +1,6 @@
-module Data.Token (Tk(..)) where
+module Data.Token (Token(..), Kind(..)) where
 
-import Data.ScalarTypes (ST)
+import Data.ScalarTypes (ST, BS)
 import Error.Error (Err)
 
 data Kind = Scalar String ST
@@ -9,8 +9,8 @@ data Kind = Scalar String ST
            | Item String
            | Comment String
            | Space Int
-           | LiteralBlockStart ST -- | |+ |-
-           | FoldedBlockStart ST -- > >+ >-
+           | LiteralBlockStart String BS -- | |+ |-
+           | FoldedBlockStart String BS -- > >+ >-
            | MappingStart
            | MappingEnd
            | SequenceStart
@@ -32,7 +32,7 @@ data Token = Token {
     } deriving (Show)
 
 
-instance Show Tk where
+instance Show Token where
     show (Scalar str st) = "Scalar " ++ show str ++ " " ++ show st
     show (Key str) = "Key " ++ show str
     show (Value str) = "Value " ++ show str

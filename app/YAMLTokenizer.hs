@@ -5,19 +5,19 @@ import System.IO.Unsafe (unsafePerformIO)
 
 import Data.Char (isSpace)
 import Utils
-import qualified Data.Token as Tk
-import qualified Data.ScalarTypes as St
+import Data.Token (Token(..), Kind(..))
+import Data.ScalarTypes (ST(..), BS(..))
 
 spacesCount :: Handle -> IO Int
 spacesCount handle = do
     spaces <- readWhile (== ' ') handle  -- Read consecutive spaces
     return (1 + length spaces)
 
-createToken :: Kind -> IORef Int -> IORef Int -> IO Tk
+createToken :: Kind -> IO Token
 createToken kind lineRef colRef = do
     line <- readIORef lineRef
     col <- readIORef colRef
-    return $ Tk kind line col
+    return $ Token kind line col
 
 lineRef :: IORef Int
 lineRef = unsafePerformIO (newIORef 0)
@@ -25,7 +25,7 @@ lineRef = unsafePerformIO (newIORef 0)
 colRef :: IORef Int
 colRef = unsafePerformIO (newIORef 0)
 
-tokenize :: Handle -> IO [Tk]
+tokenize :: Handle -> IO [Token]
 tokenize handle = do
     isEOF <- hIsEOF handle
     if not isEOF
@@ -55,38 +55,37 @@ tokenize handle = do
                 '\'' -> do
                     str <- readUntilQuote handle
                     modifyIORef colRef (+ length str)
-                    (createToken (Kind.Scalar str St.DoubleQuote) :) <$> tokenize handle
+                    (createToken (Kind.Scalar str ST.DoubleQuote) :) <$> tokenize handle
                 '"' -> do
                     str <- readUntilQuote handle
                     modifyIORef colRef (+ length str)
-                    (createToken (Kind.Scalar str St.Quote) :) <$> tokenize handle
+                    (createToken (Kind.Scalar str ST.Quote) :) <$> tokenize handle
                 '|' -> do
                     nextChar <- hLookAhead handle
-                    case nextChar of
-                        '+' -> do
-                            _ <- hGetChar handle -- consume
-                            (createToken Kind.LiteralBlockPlusStart :) <$> tokenize handle
-                        '-' -> do
-                            _ <- hGetChar handle
-                            (createToken Kind.LiteralBlockSMinustart :) <$> tokenize handle
-                        '\n' -> (createToken Kind.LiteralBlockStart :) <$> tokenize handle
-                        _ -> tokenize handle
+                    let bs = BS.Empty;
+                    let bs = case nextChar of
+                        '+' -> BS.Plus
+                        '-' -> BS.Minus
+                        '\n' -> BS.Empty
+                        _ -> "invalid token"
+                    _ <- hGetChar handle
+                    (createToken (Kind.FoldedBlockStart bs) :) <$> tokenize handle
                 '>' -> do
                     nextChar <- hLookAhead handle
                     case nextChar of
                         '+' -> do
                             _ <- hGetChar handle
-                            (createToken Kind.FoldedBlockPlusStart :) <$> tokenize handle
+                            (createToken (Kind.FoldedBlockStart BS.Plus) :) <$> tokenize handle
                         '-' -> do
                             _ <- hGetChar handle
-                            (createToken Kind.FoldedBlockMinusStart :) <$> tokenize handle
-                        '\n' -> (createToken Kind.FoldedBlockStart :) <$> tokenize handle
+                            (createToken (Kind.FoldedBlockStart BS.Minus) :) <$> tokenize handle
+                        '\n' -> (createToken (Kind.FoldedBlockStart BS.Empty) :) <$> tokenize handle
                         _ -> tokenize handle
                 _ -> do
                     let str = [char]
                     rest <- readWhile isScalarChar handle
                     let fullStr = str ++ rest
-                    (createToken (Kind.Scalar fullStr St.NoQuote) :) <$> tokenize handle
+                    (createToken (Kind.Scalar fullStr ST.NoQuote) :) <$> tokenize handle
         else
             return [createToken Kind.EOF]
 
@@ -104,20 +103,17 @@ readUntilQuote handle = do
                 then return str
                 else (str ++) <$> readUntilQuote handle
 
-tokenizeBlock :: [Kind.Tk] -> [Kind.Tk]
-tokenizeBlock (tkn:rest) =
-    case tkn of
-        Kind.LiteralBlockStart -> 
-        Kind.FoldedBlockStart -> 
-        _ -> tkn : tokenizeBlock rest
 
-readTknUntilBlockEnds :: [Kind.Tk] -> [Kind.Tk]
-readTknUntilBlockEnds (tkn:rest) =
-    case tkn of
-        Kind.NewLine -> readTknUntilBlockEnds' rest
-    where
-        readTknUntilBlockEnds' [Kind.Tk] -> [Kind.Tk]
-        readTknUntilBlockEnds' (tkn:rest) =
-            case tkn of
-                Kind.Space n -> 
-                _ -> 
+processBlockScalar :: Handle -> IO String
+processBlockScalar handle = processBlockScalar' handle "" (-1)
+
+processBlockScalar' :: Handle -> String -> Int -> IO String
+processBlockScalar' handle fullstr len_space = do
+    str <- readWhile (/= '\n') handle
+    spaces <- readWhile (== ' ') handle
+    let fullstr' = fullstr ++ str ++ 
+
+    let len = length spaces
+    if len > len_space
+        then processBlockScalar' handle fullstr' len
+        else return fullstr'

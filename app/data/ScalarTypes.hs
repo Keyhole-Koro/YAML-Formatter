@@ -1,5 +1,6 @@
 module Data.ScalarType where
 
+-- scalar type
 data ST = NoQuote
     | SingleQuote
     | DoubleQuote
@@ -10,3 +11,8 @@ data ST = NoQuote
     | FoldedBlockPlus
     | FoldedBlockMinus
     | Empty deriving (Show, Eq)
+
+-- block scalar type
+data BS = Plus
+    | Minus
+    | Enpty deriving (Show, Eq)
