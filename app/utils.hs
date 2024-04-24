@@ -48,3 +48,7 @@ spaceStr num_spaces = spaceStr' num_spaces ""
         spaceStr' :: Int -> String -> String
         spaceStr' 0 str = str
         spaceStr' n str = spaceStr' (n - 1) (str ++ " ")
+
+getLastChar :: String -> Maybe Char
+getLastChar [] = Nothing
+getLastChar str = Just (last str)

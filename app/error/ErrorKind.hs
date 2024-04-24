@@ -7,6 +7,8 @@ data ErrKind = ExcessSpaces
             | Key
             | Excess -- shouldn't exist one
             | Comma
+            | MissingQuote
+            | MissingDoubleQuote
             | SquareBracket
             | DoubleQuotation
             | ImplementationError

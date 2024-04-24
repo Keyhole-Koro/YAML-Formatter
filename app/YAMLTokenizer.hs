@@ -8,6 +8,8 @@ import Utils
 import Data.Token (Token(..), Kind(..))
 import Data.ScalarTypes (ST(..), BS(..))
 
+import Error.ErrorKind (ErrKind)
+
 spacesCount :: Handle -> IO Int
 spacesCount handle = do
     spaces <- readWhile (== ' ') handle
@@ -57,13 +59,35 @@ tokenize' handle = do
                     modifyIORef colRef (+ length str)
                     (createToken (Kind.Comment str) :) <$> tokenize' handle
                 '\'' -> do
-                    str <- readUntilQuote handle
+                    line <- readWhile (/='\n')
+                    let lastChar = case getLastChar line of
+                                Just c -> c
+                                Nothing -> error "Empty line"
+                    let (str, kind) = if lastChar == '\''
+                            then (readUntilQuote handle, Kind.SingleQuote)
+                            else if lastChar == '\''
+                                    then (line, Kind.Scalar)
+                                    else ("", ErrKind.MissingQuote)
                     modifyIORef colRef (+ length str)
-                    (createToken (Kind.Scalar str ST.DoubleQuote) :) <$> tokenize' handle
+                    let op_kind = if kind == Kind.scalar
+                        then Kind.Scalar str ST.Quote
+                        else kind
+                    (createToken op_kind :) <$> tokenize' handle
                 '"' -> do
-                    str <- readUntilQuote handle
+                    line <- readWhile (/='\n')
+                    let lastChar = case getLastChar line of
+                                Just c -> c
+                                Nothing -> error "Empty line"
+                    let (str, kind) = if lastChar == '"'
+                            then (readUntilDoubleQuote handle, Kind.Scalar)
+                            else if lastChar == '"'
+                                    then (line, Kind.DoubleQuote)
+                                    else ("", ErrKind.MissingDoubleQuote)
                     modifyIORef colRef (+ length str)
-                    (createToken (Kind.Scalar str ST.Quote) :) <$> tokenize' handle
+                    let op_kind = if kind == Kind.scalar
+                        then Kind.Scalar str ST.DoubleQuote
+                        else kind
+                    (createToken op_kind :) <$> tokenize' handle
                 '|' -> do
                     nextChar <- hLookAhead handle
                     let bs = case nextChar of
@@ -132,6 +156,19 @@ readUntilBlockScalarEnds' tokens@(tkn:rest) expectedPos fullStr =
 
 readUntilQuote :: Handle -> IO String
 readUntilQuote handle = do
+    char <- hGetChar handle
+    if char == '\''
+        then return ""
+        else do
+            rest <- readWhile (/= '\'') handle
+            let str = char : rest
+            nextChar <- hGetChar handle
+            if nextChar == '\''
+                then return str
+                else (str ++) <$> readUntilQuote handle
+
+readUntilDoubleQuote :: Handle -> IO String
+readUntilDoubleQuote handle = do
     char <- hGetChar handle
     if char == '"'
         then return ""

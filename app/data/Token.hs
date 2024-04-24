@@ -2,6 +2,7 @@ module Data.Token (Token(..), Kind(..)) where
 
 import Data.ScalarTypes (ST, BS)
 import Error.Error (Err)
+import Error.ErrorKind (ErrKind)
 
 data Kind = Scalar String ST
            | Key String
@@ -21,6 +22,7 @@ data Kind = Scalar String ST
            | NewLine
            | Sharp
            | EOF
+           | TempError ErrKind
            | Error Err
            | Empty
            deriving (Eq)
