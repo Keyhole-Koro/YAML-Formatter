@@ -61,34 +61,36 @@ tokenize' handle = do
                 '\'' -> do
                     line <- readWhile (/='\n')
                     let lastChar = case getLastChar line of
-                                Just c -> c
-                                Nothing -> error "Empty line"
+                                    Just c -> c
+                                    Nothing -> ErrKind.EmptyValue
                     let (str, kind) = if lastChar == '\''
-                            then (readUntilQuote handle, Kind.Scalar)
-                            else if lastChar == '\''
-                                    then (line, Kind.Scalar)
-                                    else ("", ErrKind.MissingQuote)
+                                        then (readUntilQuote handle, Kind.Scalar)
+                                        else if lastChar == '\''
+                                                then (line, Kind.Scalar)
+                                                else ("", ErrKind.MissingQuote)
                     modifyIORef colRef (+ length str)
-                    let op_kind = if kind == Kind.scalar
-                        then Kind.Scalar str ST.Quote
-                        else if kind == ErrKind.MissingQuote
-                            then kind ('\'' ++ str)
+                    let op_kind = if kind == Kind.Scalar && lastChar == '\''
+                                    then Kind.Scalar str ST.Quote
+                                    else if kind == ErrKind.MissingQuote || kind == ErrKind.EmptyValue
+                                        then createToken kind ('\'' ++ str)
+                                        else error "Unexpected kind"
                     (createToken op_kind :) <$> tokenize' handle
                 '"' -> do
                     line <- readWhile (/='\n')
                     let lastChar = case getLastChar line of
-                                Just c -> c
-                                Nothing -> error "Empty line"
+                                    Just c -> c
+                                    Nothing -> ErrKind.EmptyValue
                     let (str, kind) = if lastChar == '"'
-                            then (readUntilDoubleQuote handle, Kind.Scalar)
-                            else if lastChar == '"'
-                                    then (line, Kind.DoubleQuote)
-                                    else ("", ErrKind.MissingDoubleQuote)
+                                        then (readUntilDoubleQuote handle, Kind.Scalar)
+                                        else if lastChar == '"'
+                                                then (line, Kind.DoubleQuote)
+                                                else ("", ErrKind.MissingDoubleQuote)
                     modifyIORef colRef (+ length str)
-                    let op_kind = if kind == Kind.Scalar
-                        then Kind.Scalar str ST.DoubleQuote
-                        else if kind == ErrKind.MissingDoubleQuote
-                            then kind ('"' ++ str)
+                    let op_kind = if kind == Kind.Scalar && lastChar == '"'
+                                    then Kind.Scalar str ST.DoubleQuote
+                                    else if kind == ErrKind.MissingDoubleQuote || kind == ErrKind.EmptyValue
+                                        then createToken kind ('"' ++ str)
+                                        else error "Unexpected kind"
                     (createToken op_kind :) <$> tokenize' handle
                 '|' -> do
                     nextChar <- hLookAhead handle

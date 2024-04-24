@@ -3,8 +3,8 @@ module Utils where
 import System.IO
 import Data.Char (isSpace)
 
-import qualified Data.Token as Tk
-import qualified DAta.ScalarTypes as ST
+import Data.Token (Token(..), Kind(..))
+import qualified Data.ScalarTypes as ST
 
 import Error.Error (Err)
 import Error.ErrorKind (ErrKind)
@@ -32,14 +32,14 @@ elem' n (x : xs)
   | n == x = True
   | otherwise = elem' n xs
 
-isStart :: Tk.Tk -> Bool
-isStart Tk.SequenceStart = True
-isStart Tk.MappingStart = True
+isStart :: Token -> Bool
+isStart Token.SequenceStart = True
+isStart Token.MappingStart = True
 isStart _ = False
 
-isEnd :: Tk.Tk -> Bool
-isEnd Tk.SequenceEnd = True
-isEnd Tk.MappingEnd = True
+isEnd :: Token -> Bool
+isEnd Token.SequenceEnd = True
+isEnd Token.MappingEnd = True
 isEnd _ = False
 
 spaceStr :: Int -> String

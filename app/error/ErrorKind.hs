@@ -9,6 +9,7 @@ data ErrKind = ExcessSpaces
             | Comma
             | MissingQuote
             | MissingDoubleQuote
+            | EmptyValue
             | SquareBracket
             | DoubleQuotation
             | ImplementationError
