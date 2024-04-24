@@ -31,7 +31,7 @@ tokenize handle = do
     if not isEOF
         then do
             char <- hGetChar 
-            modifyIORef' colRef (+1)
+            modifyIORef colRef (+1)
             case char of
                 ':' -> (createToken Kind.Colon :) <$> tokenize handle
                 '-' -> (createToken Kind.Dash :) <$> tokenize handle
@@ -86,6 +86,7 @@ tokenize handle = do
                     let str = [char]
                     rest <- readWhile isScalarChar handle
                     let fullStr = str ++ rest
+                    modifyIORef colRef (+ length fullStr)
                     (createToken (Kind.Scalar fullStr ST.NoQuote) :) <$> tokenize handle
         else
             return [createToken Kind.EOF]
