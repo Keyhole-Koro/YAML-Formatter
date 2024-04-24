@@ -62,25 +62,26 @@ tokenize handle = do
                     (createToken (Kind.Scalar str ST.Quote) :) <$> tokenize handle
                 '|' -> do
                     nextChar <- hLookAhead handle
-                    let bs = BS.Empty;
                     let bs = case nextChar of
                         '+' -> BS.Plus
                         '-' -> BS.Minus
                         '\n' -> BS.Empty
-                        _ -> "invalid token"
-                    _ <- hGetChar handle
-                    (createToken (Kind.FoldedBlockStart bs) :) <$> tokenize handle
+                        _ -> BS.Empty
+                    if bs /= BS.Empty
+                        then do
+                            _ <- hGetChar handle
+                    (createToken (Kind.LiteralBlockStart "" bs) :) <$> tokenize handle
                 '>' -> do
                     nextChar <- hLookAhead handle
-                    case nextChar of
-                        '+' -> do
+                    let bs = case nextChar of
+                        '+' -> BS.Plus
+                        '-' -> BS.Minus
+                        '\n' -> BS.Empty
+                        _ -> BS.Empty
+                    if bs /= BS.Empty
+                        then do
                             _ <- hGetChar handle
-                            (createToken (Kind.FoldedBlockStart BS.Plus) :) <$> tokenize handle
-                        '-' -> do
-                            _ <- hGetChar handle
-                            (createToken (Kind.FoldedBlockStart BS.Minus) :) <$> tokenize handle
-                        '\n' -> (createToken (Kind.FoldedBlockStart BS.Empty) :) <$> tokenize handle
-                        _ -> tokenize handle
+                    (createToken (Kind.FoldedBlockStart "" bs) :) <$> tokenize handle
                 _ -> do
                     let str = [char]
                     rest <- readWhile isScalarChar handle
@@ -102,18 +103,3 @@ readUntilQuote handle = do
             if nextChar == '"'
                 then return str
                 else (str ++) <$> readUntilQuote handle
-
-
-processBlockScalar :: Handle -> IO String
-processBlockScalar handle = processBlockScalar' handle "" (-1)
-
-processBlockScalar' :: Handle -> String -> Int -> IO String
-processBlockScalar' handle fullstr len_space = do
-    str <- readWhile (/= '\n') handle
-    spaces <- readWhile (== ' ') handle
-    let fullstr' = fullstr ++ str ++ 
-
-    let len = length spaces
-    if len > len_space
-        then processBlockScalar' handle fullstr' len
-        else return fullstr'
