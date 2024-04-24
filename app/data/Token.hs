@@ -22,7 +22,7 @@ data Kind = Scalar String ST
            | NewLine
            | Sharp
            | EOF
-           | TempError ErrKind
+           | TempError ErrKind String
            | Error Err
            | Empty
            deriving (Eq)

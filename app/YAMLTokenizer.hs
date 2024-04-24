@@ -71,7 +71,8 @@ tokenize' handle = do
                     modifyIORef colRef (+ length str)
                     let op_kind = if kind == Kind.scalar
                         then Kind.Scalar str ST.Quote
-                        else kind
+                        else if kind == ErrKind.MissingQuote
+                            then kind ('\'' ++ str)
                     (createToken op_kind :) <$> tokenize' handle
                 '"' -> do
                     line <- readWhile (/='\n')
@@ -86,7 +87,8 @@ tokenize' handle = do
                     modifyIORef colRef (+ length str)
                     let op_kind = if kind == Kind.Scalar
                         then Kind.Scalar str ST.DoubleQuote
-                        else kind
+                        else if kind == ErrKind.MissingDoubleQuote
+                            then kind ('"' ++ str)
                     (createToken op_kind :) <$> tokenize' handle
                 '|' -> do
                     nextChar <- hLookAhead handle
