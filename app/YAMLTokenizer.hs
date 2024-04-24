@@ -64,7 +64,7 @@ tokenize' handle = do
                                 Just c -> c
                                 Nothing -> error "Empty line"
                     let (str, kind) = if lastChar == '\''
-                            then (readUntilQuote handle, Kind.SingleQuote)
+                            then (readUntilQuote handle, Kind.Scalar)
                             else if lastChar == '\''
                                     then (line, Kind.Scalar)
                                     else ("", ErrKind.MissingQuote)
@@ -84,7 +84,7 @@ tokenize' handle = do
                                     then (line, Kind.DoubleQuote)
                                     else ("", ErrKind.MissingDoubleQuote)
                     modifyIORef colRef (+ length str)
-                    let op_kind = if kind == Kind.scalar
+                    let op_kind = if kind == Kind.Scalar
                         then Kind.Scalar str ST.DoubleQuote
                         else kind
                     (createToken op_kind :) <$> tokenize' handle
