@@ -1,4 +1,4 @@
-module YAMLtokenizer where
+module YAMLtokenize'r where
 import System.IO
 import Data.IORef
 import System.IO.Unsafe (unsafePerformIO)
@@ -10,7 +10,7 @@ import Data.ScalarTypes (ST(..), BS(..))
 
 spacesCount :: Handle -> IO Int
 spacesCount handle = do
-    spaces <- readWhile (== ' ') handle  -- Read consecutive spaces
+    spaces <- readWhile (== ' ') handle
     return (1 + length spaces)
 
 createToken :: Kind -> IO Token
@@ -26,40 +26,44 @@ colRef :: IORef Int
 colRef = unsafePerformIO (newIORef 0)
 
 tokenize :: Handle -> IO [Token]
-tokenize handle = do
+tokenize handle =
+    refactorToken <$> tokenize' handle
+
+tokenize' :: Handle -> IO [Token]
+tokenize' handle = do
     isEOF <- hIsEOF handle
     if not isEOF
         then do
             char <- hGetChar 
             modifyIORef colRef (+1)
             case char of
-                ':' -> (createToken Kind.Colon :) <$> tokenize handle
-                '-' -> (createToken Kind.Dash :) <$> tokenize handle
+                ':' -> (createToken Kind.Colon :) <$> tokenize' handle
+                '-' -> (createToken Kind.Dash :) <$> tokenize' handle
                 '\n' -> do
                     modifyIORef lineRef (+1)
                     writeIORef colRef (0)
-                    (createToken Kind.NewLine :) <$> tokenize handle
-                '{' -> (createToken Kind.MappingStart :) <$> tokenize handle
-                '}' -> (createToken Kind.MappingEnd :) <$> tokenize handle
-                '[' -> (createToken Kind.SequenceStart :) <$> tokenize handle
-                ']' -> (createToken Kind.SequenceEnd :) <$> tokenize handle
-                ',' -> (createToken Kind.Comma :) <$> tokenize handle
+                    (createToken Kind.NewLine :) <$> tokenize' handle
+                '{' -> (createToken Kind.MappingStart :) <$> tokenize' handle
+                '}' -> (createToken Kind.MappingEnd :) <$> tokenize' handle
+                '[' -> (createToken Kind.SequenceStart :) <$> tokenize' handle
+                ']' -> (createToken Kind.SequenceEnd :) <$> tokenize' handle
+                ',' -> (createToken Kind.Comma :) <$> tokenize' handle
                 ' ' -> do
                     numSpaces <- spacesCount handle
                     modifyIORef colRef (+ numSpaces)
-                    (createToken (Kind.Space numSpaces) :) <$> tokenize handle
+                    (createToken (Kind.Space numSpaces) :) <$> tokenize' handle
                 '#' -> do
                     str <- readWhile (/= '\n') handle
                     modifyIORef colRef (+ length str)
-                    (createToken (Kind.Comment str) :) <$> tokenize handle
+                    (createToken (Kind.Comment str) :) <$> tokenize' handle
                 '\'' -> do
                     str <- readUntilQuote handle
                     modifyIORef colRef (+ length str)
-                    (createToken (Kind.Scalar str ST.DoubleQuote) :) <$> tokenize handle
+                    (createToken (Kind.Scalar str ST.DoubleQuote) :) <$> tokenize' handle
                 '"' -> do
                     str <- readUntilQuote handle
                     modifyIORef colRef (+ length str)
-                    (createToken (Kind.Scalar str ST.Quote) :) <$> tokenize handle
+                    (createToken (Kind.Scalar str ST.Quote) :) <$> tokenize' handle
                 '|' -> do
                     nextChar <- hLookAhead handle
                     let bs = case nextChar of
@@ -70,7 +74,7 @@ tokenize handle = do
                     if bs /= BS.Empty
                         then do
                             _ <- hGetChar handle
-                    (createToken (Kind.LiteralBlockStart "" bs) :) <$> tokenize handle
+                    (createToken (Kind.LiteralBlockStart "" bs) :) <$> tokenize' handle
                 '>' -> do
                     nextChar <- hLookAhead handle
                     let bs = case nextChar of
@@ -81,15 +85,51 @@ tokenize handle = do
                     if bs /= BS.Empty
                         then do
                             _ <- hGetChar handle
-                    (createToken (Kind.FoldedBlockStart "" bs) :) <$> tokenize handle
+                    (createToken (Kind.FoldedBlockStart "" bs) :) <$> tokenize' handle
                 _ -> do
                     let str = [char]
                     rest <- readWhile isScalarChar handle
                     let fullStr = str ++ rest
                     modifyIORef colRef (+ length fullStr)
-                    (createToken (Kind.Scalar fullStr ST.NoQuote) :) <$> tokenize handle
+                    (createToken (Kind.Scalar fullStr ST.NoQuote) :) <$> tokenize' handle
         else
             return [createToken Kind.EOF]
+
+refactorToken :: [Token] -> [Token]
+refactorToken [] = []
+refactorToken tokens@(tkn:rest) =
+    case kind tkn of
+        Kind.LiteralBlockStart _ _ -> constructBlockScalarToken tokens (column tkn)
+        Kind.FoldedBlockStart _ _ -> constructBlockScalarToken tokens (column tkn)
+        _ -> tkn : refactorToken rest
+
+constructBlockScalarToken :: [Token] -> Int -> [Token]
+constructBlockScalarToken [] _ = []
+constructBlockScalarToken tokens@(tkn:rest) expectedPos =
+    let (str, remainingTokens) = readUntilBlockScalarEnds tokens expectedPos
+    in case tkn of
+        Token (Kind.LiteralBlockStart _ bs) line column -> Token (Kind.LiteralBlockStart str bs) line column : remainingTokens
+        Token (Kind.FoldedBlockStart _ bs) line column -> Token (Kind.FoldedBlockStart str bs) line column : remainingTokens
+        _ -> remainingTokens
+
+readUntilBlockScalarEnds :: [Token] -> Int -> (String, [Token])
+readUntilBlockScalarEnds [] _ = ("", [])
+readUntilBlockScalarEnds tokens expectedPos = readUntilBlockScalarEnds' tokens expectedPos ""
+
+readUntilBlockScalarEnds' :: [Token] -> Int -> String -> (String, [Token])
+readUntilBlockScalarEnds' [] _ fullStr = (fullStr, [])
+readUntilBlockScalarEnds' tokens@(tkn:rest) expectedPos fullStr =
+    case kind (tkn) of
+        Kind.NewLine -> readUntilBlockScalarEnds' rest expectedPos (fullStr ++ "\n")
+        Kind.Space n -> if n >= expectedPos
+                            then readUntilBlockScalarEnds' rest expectedPos (fullStr ++ spaceStr (n - expectedPos))
+                            else (fullStr, tokens)
+        Kind.Scalar str type' -> let str' = case type' of
+                                                ST.Quote -> '\'' : str ++ "'"
+                                                ST.DoubleQuote -> '"' : str ++ "\""
+                                                ST.NoQuote -> str
+                                 in readUntilBlockScalarEnds' rest expectedPos (fullStr ++ str')
+        _ -> (fullStr, tokens)
 
 
 readUntilQuote :: Handle -> IO String

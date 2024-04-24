@@ -41,3 +41,10 @@ isEnd :: Tk.Tk -> Bool
 isEnd Tk.SequenceEnd = True
 isEnd Tk.MappingEnd = True
 isEnd _ = False
+
+spaceStr :: Int -> String
+spaceStr num_spaces = spaceStr' num_spaces ""
+    where
+        spaceStr' :: Int -> String -> String
+        spaceStr' 0 str = str
+        spaceStr' n str = spaceStr' (n - 1) (str ++ " ")
