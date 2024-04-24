@@ -72,8 +72,7 @@ tokenize' handle = do
                         '\n' -> BS.Empty
                         _ -> BS.Empty
                     if bs /= BS.Empty
-                        then do
-                            _ <- hGetChar handle
+                        then _ <- hGetChar handle
                     (createToken (Kind.LiteralBlockStart "" bs) :) <$> tokenize' handle
                 '>' -> do
                     nextChar <- hLookAhead handle
@@ -83,8 +82,7 @@ tokenize' handle = do
                         '\n' -> BS.Empty
                         _ -> BS.Empty
                     if bs /= BS.Empty
-                        then do
-                            _ <- hGetChar handle
+                        then _ <- hGetChar handle
                     (createToken (Kind.FoldedBlockStart "" bs) :) <$> tokenize' handle
                 _ -> do
                     let str = [char]
@@ -125,8 +123,8 @@ readUntilBlockScalarEnds' tokens@(tkn:rest) expectedPos fullStr =
                             then readUntilBlockScalarEnds' rest expectedPos (fullStr ++ spaceStr (n - expectedPos))
                             else (fullStr, tokens)
         Kind.Scalar str type' -> let str' = case type' of
-                                                ST.Quote -> '\'' : str ++ "'"
-                                                ST.DoubleQuote -> '"' : str ++ "\""
+                                                ST.Quote -> '\'' : str ++ '\''
+                                                ST.DoubleQuote -> '"' : str ++ '"'
                                                 ST.NoQuote -> str
                                  in readUntilBlockScalarEnds' rest expectedPos (fullStr ++ str')
         _ -> (fullStr, tokens)
