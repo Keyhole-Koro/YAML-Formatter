@@ -19,7 +19,7 @@ spacesCount handle = do
 createToken :: Kind -> IO Token
 createToken kind lineRef colRef = do
     line <- readIORef lineRef
-    col <- readIORef colRef
+    col <- readIORef head_pos
     return $ Token kind line col
 
 lineRef :: IORef Int
@@ -27,6 +27,9 @@ lineRef = unsafePerformIO (newIORef 0)
 
 colRef :: IORef Int
 colRef = unsafePerformIO (newIORef 0)
+
+head_pos :: IORef Int
+head_pos = unsafePerformIO (newIORef (readIORef colRef))
 
 tokenize :: Handle -> IO [Token]
 tokenize handle =
@@ -39,6 +42,7 @@ tokenize' handle = do
         then do
             char <- hGetChar handle
             modifyIORef colRef (+1)
+						head_pos = readIORef colRef
             case char of
                 ':' -> (createToken Kind.Colon :) <$> tokenize' handle
                 '-' -> (createToken Kind.Dash :) <$> tokenize' handle
