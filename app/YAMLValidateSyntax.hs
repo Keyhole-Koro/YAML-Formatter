@@ -6,7 +6,7 @@ import YAMLTokenizer
 import Utils
 import Stack
 
-import Data.Token
+import Token
 
 import Error.Error
 import Error.ErrorKind

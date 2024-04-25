@@ -1,4 +1,4 @@
-module Data.Token (Token(..), Kind(..)) where
+module Token (Token(..), Kind(..)) where
 
 data Tk
 

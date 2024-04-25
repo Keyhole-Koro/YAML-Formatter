@@ -3,8 +3,8 @@ module Utils where
 import System.IO
 import Data.Char (isSpace)
 
-import Data.Token
-import qualified Data.ScalarTypes as ST
+import Token
+import Token.ScalarTypes
 
 import Error.Error
 import Error.ErrorKind

@@ -1,6 +1,6 @@
-module Data.Token (Token(..), Kind(..)) where
+module Token (Token(..), Kind(..)) where
 
-import Data.ScalarTypes
+import Token.ScalarTypes
 import Error.Error
 import Error.ErrorKind
 

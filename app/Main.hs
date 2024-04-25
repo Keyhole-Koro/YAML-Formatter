@@ -3,7 +3,7 @@ import System.IO
 import YAMLTokenizer
 import YAMLValidateSyntax
 
-import Data.Token
+import Token
 
 import Error.Error
 

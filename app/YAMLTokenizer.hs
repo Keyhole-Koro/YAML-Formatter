@@ -6,8 +6,8 @@ import System.IO.Unsafe (unsafePerformIO)
 import Data.Char (isSpace)
 import Utils
 import Stack
-import Data.Token
-import Data.ScalarTypes
+import Token
+import Token.ScalarTypes
 
 import Error.ErrorKind
 

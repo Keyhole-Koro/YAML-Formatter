@@ -67,8 +67,8 @@ executable YAML-Formatter
         Error.Error
         Error.ErrorRank
         Error.ErrorKind
-        Data.ScalarTypes
-        Data.Token
+        Token.ScalarTypes
+        Token
         Utils
         Stack
     -- LANGUAGE extensions used by modules in this package.
