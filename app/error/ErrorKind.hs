@@ -1,4 +1,4 @@
-module Error.ErrorKind (ErrKind) where
+module Error.ErrorKind (ErrKind(..)) where
     
 data ErrKind = ExcessSpaces
             | Space

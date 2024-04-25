@@ -9,7 +9,7 @@ import Stack
 import Data.Token
 import Data.ScalarTypes
 
-import Error.ErrorKind (ErrKind)
+import Error.ErrorKind
 
 spacesCount :: Handle -> IO Int
 spacesCount handle = do
