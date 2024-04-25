@@ -37,7 +37,7 @@ tokenize' handle = do
     isEOF <- hIsEOF handle
     if not isEOF
         then do
-            char <- hGetChar 
+            char <- hGetChar handle
             modifyIORef colRef (+1)
             case char of
                 ':' -> (createToken Kind.Colon :) <$> tokenize' handle
