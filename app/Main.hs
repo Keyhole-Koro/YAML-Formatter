@@ -3,9 +3,9 @@ import System.IO
 import YAMLTokenizer
 import YAMLValidateSyntax
 
-import qualified Data.Token as Tk
+import Data.Token
 
-import Error.Error (Err(..))
+import Error.Error
 
 main :: IO ()
 main = do

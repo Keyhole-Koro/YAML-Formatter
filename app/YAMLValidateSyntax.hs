@@ -4,12 +4,13 @@ import Data.List (nub)
 
 import YAMLTokenizer
 import Utils
+import Stack
 
-import Data.Token (Token(..), Kind(..))
+import Data.Token
 
-import Error.Error (Err(..))
-import Error.ErrorKind as ErrKind
-import Error.ErrorRank as ErrRank
+import Error.Error
+import Error.ErrorKind
+import Error.ErrorRank
 
 spaceError :: ErrRank -> Int -> Int -> Token
 spaceError rnk spcs expectedSpcs

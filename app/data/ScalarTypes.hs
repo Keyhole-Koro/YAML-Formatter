@@ -1,4 +1,4 @@
-module Data.ScalarType where
+module Data.ScalarType (ST(..), BS(..)) where
 
 -- scalar type
 data ST = NoQuote

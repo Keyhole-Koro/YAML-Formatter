@@ -1,7 +1,7 @@
 module Error.Error (Err(..)) where
 
-import Error.ErrorKind (ErrKind)
-import Error.ErrorRank (ErrRank)
+import Error.ErrorKind
+import Error.ErrorRank
 
 import {-# SOURCE #-} Data.Token(Token(..))
 

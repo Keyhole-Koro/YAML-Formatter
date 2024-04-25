@@ -3,12 +3,12 @@ module Utils where
 import System.IO
 import Data.Char (isSpace)
 
-import Data.Token (Token(..), Kind(..))
+import Data.Token
 import qualified Data.ScalarTypes as ST
 
-import Error.Error (Err)
-import Error.ErrorKind (ErrKind)
-import Error.ErrorRank (ErrRank)
+import Error.Error
+import Error.ErrorKind
+import Error.ErrorRank
 
 readWhile :: (Char -> Bool) -> Handle -> IO String
 readWhile p handle = do

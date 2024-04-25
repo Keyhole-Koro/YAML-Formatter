@@ -70,6 +70,7 @@ executable YAML-Formatter
         Data.ScalarTypes
         Data.Token
         Utils
+        Stack
     -- LANGUAGE extensions used by modules in this package.
     -- other-extensions:
 

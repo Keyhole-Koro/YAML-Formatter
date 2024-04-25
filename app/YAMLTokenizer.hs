@@ -1,12 +1,13 @@
-module YAMLtokenize'r where
+module YAMLtokenizer where
 import System.IO
 import Data.IORef
 import System.IO.Unsafe (unsafePerformIO)
 
 import Data.Char (isSpace)
 import Utils
-import Data.Token (Token(..), Kind(..))
-import Data.ScalarTypes (ST(..), BS(..))
+import Stack
+import Data.Token
+import Data.ScalarTypes
 
 import Error.ErrorKind (ErrKind)
 
